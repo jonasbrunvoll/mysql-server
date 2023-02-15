@@ -96,6 +96,7 @@
 #include "sql/visible_fields.h"
 #include "sql/window.h"  // Window
 #include "template_utils.h"
+#include "sql/sql_plan_cache.h" // PlanCache 'Jonas'.
 
 using std::vector;
 
@@ -1090,6 +1091,9 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
   }
 
   set_optimized();  // All query blocks optimized, update the state
+
+  // Test logging from sql_plan_cache.cc.  
+  PLAN_CACHE::log_hello_world();
 
   if (item != nullptr) {
     // If we're part of an IN subquery, the containing engine may want to

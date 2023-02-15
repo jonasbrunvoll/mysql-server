@@ -177,7 +177,7 @@ static bool fulltext_uses_rollup_column(const Query_block *query_block);
 */
 bool Query_block::prepare(THD *thd, mem_root_deque<Item *> *insert_field_list) {
   DBUG_TRACE;
-
+                        
   assert(this == thd->lex->current_query_block());
   assert(join == nullptr);
   assert(!thd->is_error());

@@ -2917,6 +2917,12 @@ int mysql_execute_command(THD *thd, bool first_level) {
   LEX *const lex = thd->lex;
   /* first Query_block (have special meaning for many of non-SELECTcommands) */
   Query_block *const query_block = lex->query_block;
+
+  // Jonas 
+  //Query_expression *const master_query_expression = query_block->master_query_expression();
+  //std::cout << "\nmaster query expression: " << master_query_expression << std::endl;
+  // Jonas slutt.
+  
   /* first table of first Query_block */
   Table_ref *const first_table = query_block->get_table_list();
   /* list of all tables in query */
@@ -5195,6 +5201,8 @@ void THD::reset_for_next_command() {
 void dispatch_sql_command(THD *thd, Parser_state *parser_state) {
   DBUG_TRACE;
   DBUG_PRINT("dispatch_sql_command", ("query: '%s'", thd->query().str));
+  
+  std::cout << "dispatch_sql_command(): " << thd->query().str << std::endl;
 
   DBUG_EXECUTE_IF("parser_debug", turn_parser_debug_on(););
 

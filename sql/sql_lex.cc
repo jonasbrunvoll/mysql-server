@@ -511,7 +511,6 @@ bool lex_start(THD *thd) {
   DBUG_TRACE;
 
   LEX *lex = thd->lex;
-
   lex->thd = thd;
   lex->reset();
   // Initialize the cost model to be used for this query

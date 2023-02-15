@@ -339,7 +339,6 @@ bool JOIN::optimize(bool finalize_access_paths) {
   uint no_jbuf_after = UINT_MAX;
   Query_block *const set_operand_block =
       query_expression()->non_simple_result_query_block();
-
   assert(query_block->leaf_table_count == 0 ||
          thd->lex->is_query_tables_locked() ||
          query_block == set_operand_block);
