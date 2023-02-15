@@ -4,5 +4,5 @@
 
 
 void PLAN_CACHE::log_hello_world(){
-  printf("Hello World from sql_plam_cache.cc");
+  printf("\nHello World from sql_plan_cache.cc\n");
 };
