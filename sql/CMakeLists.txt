@@ -569,6 +569,7 @@ SET(SQL_SHARED_SOURCES
   sql_partition_admin.cc
   sql_planner.cc
   sql_plan_cache.cc
+  sql_plan_cache_item.cc
   sql_plugin.cc
   sql_plugin_var.cc
   sql_prepare.cc

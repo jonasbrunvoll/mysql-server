@@ -1090,10 +1090,11 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     create_access_paths(thd);
   }
 
-  set_optimized();  // All query blocks optimized, update the state
+  std::cout << "\nDisplay query string: " << thd->query().str << ", sql_union.cc.\n"<<std::endl;
+  thd->plan_cache.print_dict();
+  thd->mem_root
 
-  // Test logging from sql_plan_cache.cc.  
-  PLAN_CACHE::log_hello_world();
+  set_optimized();  // All query blocks optimized, update the state
 
   if (item != nullptr) {
     // If we're part of an IN subquery, the containing engine may want to
@@ -1422,6 +1423,19 @@ void Query_expression::create_access_paths(THD *thd) {
     JOIN *join = first_query_block()->join;
     assert(join && join->is_optimized());
     m_root_access_path = join->root_access_path();
+  
+    // Test Jonas
+    // Generate hash key.
+    std::string hashKey = thd->plan_cache.get_hashKey(thd->query().str);
+
+    // Add plan cahe item to dictionar if it does not allready exists.c     
+    bool exists = thd->plan_cache.contains_item(hashKey);
+    if (!exists){
+      printf("Key does not exist in plan cache dictionary.\n");
+      bool err = thd->plan_cache.insert_item(hashKey, PLAN_CACHE_ITEM(m_root_access_path));
+      if (!err) printf("Item was succsessfully added to plan cache dictionary.\n");
+
+    }     
     return;
   }
 
