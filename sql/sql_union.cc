@@ -1087,12 +1087,18 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     // Recursive CTEs expect to see the rows in the result table immediately
     // after writing them.
     assert(!is_recursive());
-    create_access_paths(thd);
+
+    // Generate hash key.
+    std::string hashKey = thd->plan_cache.get_hashKey(thd->query().str);
+    // Create m_root_access_path if hashKey does not exist in plan_cache_directory.      
+    bool exists = thd->plan_cache.contains_item(hashKey);
+    if (!exists){
+      create_access_paths(thd);
+    }
   }
 
   std::cout << "\nDisplay query string: " << thd->query().str << ", sql_union.cc.\n"<<std::endl;
   thd->plan_cache.print_dict();
-  thd->mem_root
 
   set_optimized();  // All query blocks optimized, update the state
 
@@ -1427,14 +1433,14 @@ void Query_expression::create_access_paths(THD *thd) {
     // Test Jonas
     // Generate hash key.
     std::string hashKey = thd->plan_cache.get_hashKey(thd->query().str);
-
+    //thd->stmt_arena->
+    //thd->mem_root->AllocBlock
     // Add plan cahe item to dictionar if it does not allready exists.c     
     bool exists = thd->plan_cache.contains_item(hashKey);
     if (!exists){
       printf("Key does not exist in plan cache dictionary.\n");
       bool err = thd->plan_cache.insert_item(hashKey, PLAN_CACHE_ITEM(m_root_access_path));
       if (!err) printf("Item was succsessfully added to plan cache dictionary.\n");
-
     }     
     return;
   }

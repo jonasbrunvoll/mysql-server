@@ -18,6 +18,5 @@ class PLAN_CACHE {
     bool contains_item(std::string key);
     std::string get_hashKey(std::string queryString);
     void print_dict();
-    //void log_m_root_access_path_type(AccessPath *m_root_access_path);
 };
 #endif /* SQL_PLAN_CACHE_INCLUDED */
