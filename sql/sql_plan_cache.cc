@@ -4,9 +4,24 @@
 
 #include "sql/sql_plan_cache.h"
 #include "sql/sql_plan_cache_item.h"
-
+#include "sql/join_optimizer/access_path.h"
+#include "include/my_alloc.h"
 
 class AccessPath;
+
+/*
+bool PLAN_CACHE::insert_test_dict(std::string key, AccessPath path){
+  bool errorStatus = false;
+  unsigned int num_entries = test_dict.size();
+  MEM_ROOT *root;
+  AccessPath *path = new (root) AccessPath;
+  *path = path;
+  test_dict.insert(std::pair<std::string, *MEM_ROOT>(key, root));
+  if (plan_cache_dictionary.size() > num_entries) errorStatus = false;
+  return errorStatus;
+};
+*/
+
 
 bool PLAN_CACHE::insert_item(std::string key, PLAN_CACHE_ITEM item) {
   bool errorStatus = true;

@@ -1074,7 +1074,9 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     // estimated_rowcount larger than one (e.g., because it understands it can
     // get only one row due to a unique index), but will detect that the table
     // has not been created, and treat the the lookup as non-const.
-    create_access_paths(thd);
+    if (thd->plan_root.pathIsEmpty()){
+      create_access_paths(thd);
+    } 
   } else if (materialize_destination != nullptr &&
              can_materialize_directly_into_result()) {
     assert(!is_simple());
@@ -1088,17 +1090,22 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     // after writing them.
     assert(!is_recursive());
 
-    // Generate hash key.
+    /*
+    //Generate hash key.
     std::string hashKey = thd->plan_cache.get_hashKey(thd->query().str);
-    // Create m_root_access_path if hashKey does not exist in plan_cache_directory.      
+    //Create m_root_access_path if hashKey does not exist in plan_cache_directory.      
     bool exists = thd->plan_cache.contains_item(hashKey);
     if (!exists){
       create_access_paths(thd);
     }
+    */
+    if (thd->plan_root.pathIsEmpty()){
+      create_access_paths(thd);
+    }
   }
 
-  std::cout << "\nDisplay query string: " << thd->query().str << ", sql_union.cc.\n"<<std::endl;
-  thd->plan_cache.print_dict();
+  //std::cout << "\nDisplay query string: " << thd->query().str << ", sql_union.cc.\n"<<std::endl;
+  //thd->plan_cache.print_dict();
 
   set_optimized();  // All query blocks optimized, update the state
 
@@ -1423,18 +1430,26 @@ Query_term_set_op::setup_materialize_set_op(THD *thd, TABLE *dst_table,
   }
   return query_blocks;
 }
-
+  
 void Query_expression::create_access_paths(THD *thd) {
+
   if (is_simple()) {
     JOIN *join = first_query_block()->join;
     assert(join && join->is_optimized());
     m_root_access_path = join->root_access_path();
-  
+
     // Test Jonas
-    // Generate hash key.
+    // Set pointer to path.
+    if (strcmp(thd->query().str, "Select 1") == 0 && thd->plan_root.pathIsEmpty()){
+      AccessPath* const ptr_test { m_root_access_path };
+      thd->plan_root.path = ptr_test;
+      std::cout << "\nBoth the input strings are equal." << std::endl;
+    } else {
+        std::cout << "\nThe input strings are not equal." << std::endl;
+    }
+
+    /*
     std::string hashKey = thd->plan_cache.get_hashKey(thd->query().str);
-    //thd->stmt_arena->
-    //thd->mem_root->AllocBlock
     // Add plan cahe item to dictionar if it does not allready exists.c     
     bool exists = thd->plan_cache.contains_item(hashKey);
     if (!exists){
@@ -1442,6 +1457,7 @@ void Query_expression::create_access_paths(THD *thd) {
       bool err = thd->plan_cache.insert_item(hashKey, PLAN_CACHE_ITEM(m_root_access_path));
       if (!err) printf("Item was succsessfully added to plan cache dictionary.\n");
     }     
+    */
     return;
   }
 

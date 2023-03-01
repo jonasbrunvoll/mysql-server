@@ -347,6 +347,14 @@ bool JOIN::optimize(bool finalize_access_paths) {
   // to prevent double initialization on EXPLAIN
   if (optimized) return false;
 
+  // Jonas
+  // Setter thd->mem_root til å refere til plan_root->plan_mem_root.
+  // 
+  std::cout << "Display query string: " << thd->query().str << ", sql_optimizer.cc."<<std::endl;
+  std::cout << "ptr access path 1: " << thd->plan_root.path << ", sql_optimizer.cc" << std::endl; 
+  Swap_mem_root_guard mem_root_guard{thd, &thd->plan_root.plan_mem_root};
+  std::cout << "ptr access path 2: " << thd->plan_root.path << ", sql_optimizer.cc" << std::endl; 
+
   DEBUG_SYNC(thd, "before_join_optimize");
 
   THD_STAGE_INFO(thd, stage_optimizing);

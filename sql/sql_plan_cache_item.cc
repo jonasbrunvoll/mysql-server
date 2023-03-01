@@ -15,9 +15,6 @@ int PLAN_CACHE_ITEM::getAccessPath(){
   return accessPath->type;
 };
 
-
-
-
 void PLAN_CACHE_ITEM::log_m_root_access_path_type(AccessPath *m_root_access_path){
   printf("\nLogg m_root_access_path: %d\n", m_root_access_path->type);
 };
