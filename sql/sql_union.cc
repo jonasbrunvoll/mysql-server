@@ -1090,7 +1090,6 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     // after writing them.
     assert(!is_recursive());
 
-    /*
     //Generate hash key.
     std::string hashKey = thd->plan_cache.get_hashKey(thd->query().str);
     //Create m_root_access_path if hashKey does not exist in plan_cache_directory.      
@@ -1098,14 +1097,13 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     if (!exists){
       create_access_paths(thd);
     }
-    */
     if (thd->plan_root.pathIsEmpty()){
       create_access_paths(thd);
     }
   }
 
   //std::cout << "\nDisplay query string: " << thd->query().str << ", sql_union.cc.\n"<<std::endl;
-  //thd->plan_cache.print_dict();
+  thd->plan_cache.print_dict();
 
   set_optimized();  // All query blocks optimized, update the state
 
@@ -1443,6 +1441,9 @@ void Query_expression::create_access_paths(THD *thd) {
     if (strcmp(thd->query().str, "Select 1") == 0 && thd->plan_root.pathIsEmpty()){
       AccessPath* const ptr_test { m_root_access_path };
       thd->plan_root.path = ptr_test;
+      std::string hashKey = thd->plan_cache.get_hashKey(thd->query().str);
+      bool err = thd->plan_cache.insert_item(hashKey, PLAN_CACHE_ITEM(m_root_access_path));
+      if (!err) printf("Item was succsessfully added to plan cache dictionary.\n");
       std::cout << "\nBoth the input strings are equal." << std::endl;
     } else {
         std::cout << "\nThe input strings are not equal." << std::endl;
