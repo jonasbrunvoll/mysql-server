@@ -4,23 +4,24 @@
 #include <iostream>
 #include <map>
 
-#include "sql_plan_cache_item.h"
-//#include "include/my_alloc.h"
+#include "sql_class.h"                        // THD
+#include "include/my_alloc.h"   
+#include "sql_plan_root.h"
 
-//class AccessPath;
-
+class AccessPath;
 
 class PLAN_CACHE {
-    std::map<std::string, PLAN_CACHE_ITEM> plan_cache_dictionary;
-    //std::map<std::string, *MEM_ROOT> test_dict;
+    bool executing_prep_stmt = false;
+    std::map<std::string, PLAN_ROOT> plan_roots;
  public:
     PLAN_CACHE(){}
-    //bool insert_test_dict(std::string key, AccessPath path);
-    bool insert_item(std::string key, PLAN_CACHE_ITEM item);
-    bool remove_item(std::string key);
+    bool add_plan_root(std::string hash_key);
+    bool swap_mem_root(THD* thd, std::string hash_key);
     bool is_empty();
-    bool contains_item(std::string key);
-    std::string get_hashKey(std::string queryString);
-    void print_dict();
+    bool plan_root_exists(std::string hash_key);
+    std::string create_hash_key(std::string query);
+    void set_executing_prep_stmt();
+    bool is_executing_prep_stmt();
+    void set_access_path(std::string hash_key, AccessPath* access_path);
 };
 #endif /* SQL_PLAN_CACHE_INCLUDED */

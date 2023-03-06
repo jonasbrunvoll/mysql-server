@@ -111,7 +111,6 @@
 #include "thr_lock.h"
 #include "violite.h"
 #include "sql/sql_plan_cache.h"
-#include "sql/sql_plan_root.h"
 
 enum enum_check_fields : int;
 enum enum_tx_isolation : int;
@@ -937,7 +936,6 @@ class THD : public MDL_context_owner,
   */
   Thd_mem_cnt m_mem_cnt;
   PLAN_CACHE plan_cache;
-  PLAN_ROOT plan_root;
 
  private:
   inline bool is_stmt_prepare() const {

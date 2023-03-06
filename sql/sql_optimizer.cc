@@ -347,19 +347,19 @@ bool JOIN::optimize(bool finalize_access_paths) {
   // to prevent double initialization on EXPLAIN
   if (optimized) return false;
 
-  //  Editing by Jonas started
-  std::cout << "ptr access path BEFORE swap_mem_root_guard: " << thd->plan_root.path << ", sql_optimizer.cc" << std::endl;   
   /*
-  * Sets thd->mem_root to reference plan_root->plan_mem_root, if
+  * Editing by Jonas started
+  * Sets thd->mem_root to reference plan_root->mem_root, if
   * query is a prepared stmt to be executed. 
-  *  
-  * Commented out version without inline if else statement (?:): 
-  * Swap_mem_root_guard mem_root_guard{thd, &thd->plan_root.plan_mem_root};
   */ 
-  bool is_prep_stmt = thd->plan_root.execute__prep_stmt;
-  Swap_mem_root_guard mem_root_guard{thd, (is_prep_stmt ? &thd->plan_root.plan_mem_root : thd->mem_root)};
-  std::cout << "ptr access path AFTER swap_mem_root_guard: " << thd->plan_root.path << ", sql_optimizer.cc" << std::endl; 
-  //  Editing by Jonas ended. 
+  if (thd->plan_cache.is_executing_prep_stmt()){
+    std::string hash_key =  thd->plan_cache.create_hash_key(thd->query().str);
+    if (thd->plan_cache.plan_root_exists(hash_key)) {
+      thd->plan_cache.swap_mem_root(thd, hash_key);  
+    }
+  }
+  // Editing by Jonas ended. 
+  
 
   DEBUG_SYNC(thd, "before_join_optimize");
 

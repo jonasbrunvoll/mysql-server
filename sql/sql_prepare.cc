@@ -1964,6 +1964,9 @@ void mysql_sql_stmt_execute(THD *thd) {
   String expanded_query;
   if (stmt->set_parameters(thd, &expanded_query)) return;
 
+  // Ensure that the plan cache know a prepared stmt is to be executed,
+  thd->plan_cache.set_executing_prep_stmt();
+
   stmt->execute_loop(thd, &expanded_query, false);
 }
 

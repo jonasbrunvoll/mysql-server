@@ -3336,15 +3336,12 @@ int mysql_execute_command(THD *thd, bool first_level) {
     test for LOCK TABLE etc. first. To rephrase, we try not to set TX_STMT_DML
     until we have the MDL, and LOCK TABLE could massively delay this.
   */
-  std::cout << "lex->sql_command" << lex->sql_command << std::endl;
   switch (lex->sql_command) {
     case SQLCOM_PREPARE: {
       mysql_sql_stmt_prepare(thd);
       break;
     }
     case SQLCOM_EXECUTE: {
-      // TODO, find a better solution for this. 
-      thd->plan_root.execute__prep_stmt = true;
       mysql_sql_stmt_execute(thd);
       break;
     }
