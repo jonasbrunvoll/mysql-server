@@ -11,19 +11,36 @@
 
 class AccessPath;
 
-bool PLAN_CACHE::add_plan_root(std::string hash_key) {
-  bool errorStatus = true;
-  unsigned int num_entries = plan_roots.size();
-  plan_roots.emplace(hash_key, PLAN_ROOT());
-  if (plan_roots.size() > num_entries) errorStatus = false;
-  return errorStatus;
+/*
+* @ Return true if error, otherwise false.
+*/
+bool PLAN_CACHE::add_plan_root(std::string hash_key, AccessPath* access_path) {
+  // Add new plan_root to plan_roots.
+  auto it = plan_roots.emplace(hash_key, PLAN_ROOT());
+  if (!it.second) return true;
+
+  // Find plan_root and set access_path.
+  auto plan_root = plan_roots.find(hash_key);
+  plan_root->second.path = access_path;
+  return false; 
 };
 
 void PLAN_CACHE::set_access_path(std::string hash_key, AccessPath* ptr_access_path){
-   auto plan_root = plan_roots.find(hash_key);
-   plan_root->second.path = ptr_access_path;
-   
+  auto plan_root = plan_roots.find(hash_key);
+  plan_root->second.path = ptr_access_path;
 };
+
+bool PLAN_CACHE::plan_root_is_optimized(std::string hash_key){
+  auto plan_root = plan_roots.find(hash_key);
+  return plan_root->second.is_optimized;
+}
+
+void PLAN_CACHE::plan_root_set_optimized(std::string hash_key){
+  auto plan_root = plan_roots.find(hash_key);
+  plan_root->second.is_optimized = true;
+}
+
+
 /*
 * @Return true if hash_key does not exists plan_roots. Otherwise sets 
 * thd->mem_root to reference the mem_root of the 
@@ -34,13 +51,6 @@ bool PLAN_CACHE::swap_mem_root(THD* thd, std::string hash_key){
   if (!plan_root_exists(hash_key)) return true;
   auto plan_root = plan_roots.find(hash_key);
   Swap_mem_root_guard mem_root_guard{thd, &plan_root->second.mem_root};
-  return false;
-};
-
-
-//@Return true if empty, false otherwise. 
-bool PLAN_CACHE::is_empty(){
-  if (plan_roots.size() == 0) return true;
   return false;
 };
 
