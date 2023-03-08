@@ -764,6 +764,17 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
                      /*create_iterators=*/true, /*finalize_access_paths=*/true))
     return true;
 
+  if (thd->plan_cache.is_executing_prep_stmt()){
+    // Flag plan_root as optimized in the plan_cache. 
+    thd->plan_cache.plan_root_set_optimized();
+    // Reset pointer to prepered statment in plan cache. 
+    thd->plan_cache.set_ptr_prep_stmt(nullptr);
+    // Unflag exexution of prepared statment. 
+    if (!thd->plan_cache.plan_root_is_optimized()) {
+      thd->plan_cache.set_executing_prep_stmt();
+    }
+  };
+  
   // Calculate the current statement cost.
   accumulate_statement_cost(lex);
 

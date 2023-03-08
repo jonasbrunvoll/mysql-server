@@ -1107,10 +1107,12 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
   }
   
   // Resest flag to next query if the current query being executed is a prepared statement.
+  /*
   if(thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
     thd->plan_cache.set_executing_prep_stmt();
     thd->plan_cache.set_ptr_prep_stmt(nullptr);
   }
+  */
   
   /*
   if(thd->plan_cache.is_executing_prep_stmt()) {
@@ -1460,12 +1462,12 @@ void Query_expression::create_access_paths(THD *thd) {
     // if (thd->plan_cache.plan_root_exists(hash_key)) return;
     
     if (thd->plan_cache.plan_root_exists()) {
-      thd->plan_cache.set_access_path(m_root_access_path);
+      thd->plan_cache.set_access_path(join->query_block, m_root_access_path);
     }
     
 
     // Add plan root to cache and set pointer to access path.
-    thd->plan_cache.add_plan_root(m_root_access_path);
+    thd->plan_cache.add_plan_root(join->query_block, m_root_access_path);
     return;
   }
 

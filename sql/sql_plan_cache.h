@@ -17,7 +17,8 @@ class PLAN_CACHE {
     Prepared_statement* ptr_prep_stmt = nullptr;
  public:
     PLAN_CACHE(){}
-    bool add_plan_root(AccessPath* access_path);
+    bool add_plan_root2();
+    bool add_plan_root(Query_block* query_block, AccessPath* access_path);
     bool swap_mem_root(THD* thd);
     bool plan_root_exists();
     std::string create_hash_key(std::string query);
@@ -25,9 +26,10 @@ class PLAN_CACHE {
     bool is_executing_prep_stmt();
     bool plan_root_is_optimized();
     void plan_root_set_optimized();
-    void set_access_path(AccessPath* access_path);
+    void set_access_path(Query_block* query_block, AccessPath* access_path);
     void set_ptr_prep_stmt(Prepared_statement* ptr_prep_stmt);
     Prepared_statement* get_ptr_prep_stmt();
+    PLAN_ROOT* get_ptr_plan_root();
 
 };
 #endif /* SQL_PLAN_CACHE_INCLUDED */
