@@ -9,20 +9,25 @@
 #include "sql_plan_root.h"                    // PLAN_ROOT
 
 class AccessPath;
+class Prepared_statment;
 
 class PLAN_CACHE {
     bool executing_prep_stmt = false;
-    std::map<std::string, PLAN_ROOT> plan_roots;
+    std::map<Prepared_statement*, PLAN_ROOT> plan_roots;
+    Prepared_statement* ptr_prep_stmt = nullptr;
  public:
     PLAN_CACHE(){}
-    bool add_plan_root(std::string hash_key, AccessPath* access_path);
-    bool swap_mem_root(THD* thd, std::string hash_key);
-    bool plan_root_exists(std::string hash_key);
+    bool add_plan_root(AccessPath* access_path);
+    bool swap_mem_root(THD* thd);
+    bool plan_root_exists();
     std::string create_hash_key(std::string query);
     void set_executing_prep_stmt();
     bool is_executing_prep_stmt();
-    bool plan_root_is_optimized(std::string hash_key);
-    void plan_root_set_optimized(std::string hash_key);
-    void set_access_path(std::string hash_key, AccessPath* access_path);
+    bool plan_root_is_optimized();
+    void plan_root_set_optimized();
+    void set_access_path(AccessPath* access_path);
+    void set_ptr_prep_stmt(Prepared_statement* ptr_prep_stmt);
+    Prepared_statement* get_ptr_prep_stmt();
+
 };
 #endif /* SQL_PLAN_CACHE_INCLUDED */

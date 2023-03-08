@@ -1946,6 +1946,9 @@ void mysql_sql_stmt_execute(THD *thd) {
   DBUG_PRINT("info", ("EXECUTE: %.*s\n", (int)name.length, name.str));
 
   Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
+
+  // Set ptr in plan cache to the stmt that currently is being executed. 
+  thd->plan_cache.set_ptr_prep_stmt(stmt);
   if (stmt == nullptr) {
     my_error(ER_UNKNOWN_STMT_HANDLER, MYF(0), static_cast<int>(name.length),
              name.str, "EXECUTE");

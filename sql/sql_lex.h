@@ -1139,7 +1139,7 @@ enum class enum_explain_type {
   EXPLAIN_EXCEPT_RESULT,
   EXPLAIN_UNARY_RESULT,
   EXPLAIN_MATERIALIZED,
-  // Total:
+  // TotQuery_blockal:
   EXPLAIN_total  ///< fake type, total number of all valid types
 
   // Don't insert new types below this line!

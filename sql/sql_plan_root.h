@@ -10,14 +10,17 @@
 //#include "sql/sql_lex.h"            // Query_block
 
 class AccessPath;
+class Query_block;
 
 class PLAN_ROOT {
+    std::map<Query_block*, AccessPath*> access_paths;
     public:
+        PLAN_ROOT(){}
+        bool add_access_path(Query_block* query_block, AccessPath* access_path);
+        bool access_path_exists(Query_block* ptr_query);
         AccessPath* path = nullptr;
         MEM_ROOT mem_root;
         bool is_optimized = false;
-        std::map<std::string, AccessPath*> access_paths;
-        PLAN_ROOT(){}
 
 };
 

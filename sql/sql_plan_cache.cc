@@ -14,29 +14,29 @@ class AccessPath;
 /*
 * @ Return true if error, otherwise false.
 */
-bool PLAN_CACHE::add_plan_root(std::string hash_key, AccessPath* access_path) {
+bool PLAN_CACHE::add_plan_root(AccessPath* access_path) {
   // Add new plan_root to plan_roots.
-  auto it = plan_roots.emplace(hash_key, PLAN_ROOT());
+  auto it = plan_roots.emplace(this->ptr_prep_stmt, PLAN_ROOT());
   if (!it.second) return true;
 
   // Find plan_root and set access_path.
-  auto plan_root = plan_roots.find(hash_key);
+  auto plan_root = plan_roots.find(this->ptr_prep_stmt);
   plan_root->second.path = access_path;
   return false; 
 };
 
-void PLAN_CACHE::set_access_path(std::string hash_key, AccessPath* ptr_access_path){
-  auto plan_root = plan_roots.find(hash_key);
-  plan_root->second.path = ptr_access_path;
+void PLAN_CACHE::set_access_path(AccessPath* access_path){
+  auto plan_root = plan_roots.find(this->ptr_prep_stmt);
+  plan_root->second.path = access_path;
 };
 
-bool PLAN_CACHE::plan_root_is_optimized(std::string hash_key){
-  auto plan_root = plan_roots.find(hash_key);
+bool PLAN_CACHE::plan_root_is_optimized(){
+  auto plan_root = plan_roots.find(this->ptr_prep_stmt);
   return plan_root->second.is_optimized;
 }
 
-void PLAN_CACHE::plan_root_set_optimized(std::string hash_key){
-  auto plan_root = plan_roots.find(hash_key);
+void PLAN_CACHE::plan_root_set_optimized(){
+  auto plan_root = plan_roots.find(this->ptr_prep_stmt);
   plan_root->second.is_optimized = true;
 }
 
@@ -47,17 +47,17 @@ void PLAN_CACHE::plan_root_set_optimized(std::string hash_key){
 * pl_obj and return false. Should only happen if query is a 
 * prepared stmt to be executed. 
 */
-bool PLAN_CACHE::swap_mem_root(THD* thd, std::string hash_key){
-  if (!plan_root_exists(hash_key)) return true;
-  auto plan_root = plan_roots.find(hash_key);
+bool PLAN_CACHE::swap_mem_root(THD* thd){
+  if (!plan_root_exists()) return true;
+  auto plan_root = plan_roots.find(this->ptr_prep_stmt);
   Swap_mem_root_guard mem_root_guard{thd, &plan_root->second.mem_root};
   return false;
 };
 
 
 //@return true if item allready exists in plan_cache_dictionary, false otherwise.
-bool PLAN_CACHE::plan_root_exists(std::string hash_key){
-  return plan_roots.find(hash_key) != plan_roots.end();
+bool PLAN_CACHE::plan_root_exists(){
+  return plan_roots.find(this->ptr_prep_stmt) != plan_roots.end();
 };
 
 // TODO: Implement hash function().
@@ -73,3 +73,11 @@ bool PLAN_CACHE::is_executing_prep_stmt(){
   return this->executing_prep_stmt;
 };
 
+
+void PLAN_CACHE::set_ptr_prep_stmt(Prepared_statement* ptr_prep_stmt){
+  this->ptr_prep_stmt = ptr_prep_stmt;
+}
+
+Prepared_statement* PLAN_CACHE::get_ptr_prep_stmt(){
+  return this->ptr_prep_stmt;
+}

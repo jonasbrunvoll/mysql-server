@@ -353,11 +353,12 @@ bool JOIN::optimize(bool finalize_access_paths) {
   * the query to be executed is a prepared stmt and is allready 
   * stored in in the plan_cache.  
   */ 
-  if (thd->plan_cache.is_executing_prep_stmt()){
-    std::string hash_key =  thd->plan_cache.create_hash_key(thd->query().str);
-    thd->plan_cache.swap_mem_root(thd, hash_key);
-    if (thd->plan_cache.plan_root_exists(hash_key) && !thd->plan_cache.plan_root_is_optimized(hash_key)) {
-        thd->plan_cache.plan_root_set_optimized(hash_key);
+  //if (thd->plan_cache.is_executing_prep_stmt()){
+  if (thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
+    //std::string hash_key =  thd->plan_cache.create_hash_key(thd->query().str);
+    thd->plan_cache.swap_mem_root(thd);
+    if (thd->plan_cache.plan_root_exists() && !thd->plan_cache.plan_root_is_optimized()) {
+        thd->plan_cache.plan_root_set_optimized();
     }
   }
   // Editing by Jonas ended. 
