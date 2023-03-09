@@ -12,6 +12,7 @@ class AccessPath;
 class Prepared_statment;
 
 class PLAN_CACHE {
+    // Leg til array med pekere til plan-objekter.
     bool executing_prep_stmt = false;
     std::map<Prepared_statement*, PLAN_ROOT> plan_roots;
     Prepared_statement* ptr_prep_stmt = nullptr;

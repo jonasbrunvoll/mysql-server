@@ -1794,9 +1794,12 @@ void THD::cleanup_after_query() {
     ctx->logout();
   }
   m_view_ctx_list.clear();
+
+  
   // Cleanup and free items that were created during this execution
-  cleanup_items(item_list());
-  free_items();
+  // Jonas -- both nested and parameterized queries work when thee are commented out!!
+  //cleanup_items(item_list());
+  //free_items();
   /* Reset where. */
   where = THD::DEFAULT_WHERE;
   /* reset table map for multi-table update */

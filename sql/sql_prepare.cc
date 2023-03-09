@@ -1939,7 +1939,7 @@ void mysqld_stmt_execute(THD *thd, Prepared_statement *stmt, bool has_new_types,
   @param thd                thread handle
 */
 
-void mysql_sql_stmt_execute(THD *thd) {
+ void mysql_sql_stmt_execute(THD *thd) {
   LEX *lex = thd->lex;
   const LEX_CSTRING &name = lex->prepared_stmt_name;
   DBUG_TRACE;

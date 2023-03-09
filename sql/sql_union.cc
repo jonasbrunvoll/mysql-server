@@ -987,7 +987,8 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
   if (!finalize_access_paths) {
     assert(!create_iterators);
   }
-
+ 
+   
   assert(is_prepared() && !is_optimized());
 
   Change_current_query_block save_query_block(thd);
@@ -1078,7 +1079,8 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     
     
     //std::string hash_key = thd->plan_cache.create_hash_key(thd->query().str);
-    if (!thd->plan_cache.plan_root_exists()) {
+    //if (!thd->plan_cache.plan_root_exists()) {
+    if (!thd->plan_cache.plan_root_is_optimized()){
       create_access_paths(thd);
     }
   } else if (materialize_destination != nullptr &&
@@ -1467,7 +1469,7 @@ void Query_expression::create_access_paths(THD *thd) {
     
 
     // Add plan root to cache and set pointer to access path.
-    thd->plan_cache.add_plan_root(join->query_block, m_root_access_path);
+    //thd->plan_cache.add_plan_root(join->query_block, m_root_access_path);
     return;
   }
 
