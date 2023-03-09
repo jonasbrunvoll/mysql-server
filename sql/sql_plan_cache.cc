@@ -21,7 +21,6 @@ bool PLAN_CACHE::add_plan_root2() {
 
 /*
 * @ Return true if error, otherwise false.
-*/
 bool PLAN_CACHE::add_plan_root(Query_block* query_block, AccessPath* access_path) {
   // Add new plan_root to plan_roots.
   auto it = plan_roots.emplace(this->ptr_prep_stmt, PLAN_ROOT());
@@ -37,6 +36,7 @@ bool PLAN_CACHE::add_plan_root(Query_block* query_block, AccessPath* access_path
   
   return false; 
 };
+*/
 
 void PLAN_CACHE::set_access_path(Query_block* query_block, AccessPath* access_path){
   auto plan_root = plan_roots.find(this->ptr_prep_stmt);
@@ -54,28 +54,9 @@ void PLAN_CACHE::plan_root_set_optimized(){
 }
 
 
-/*
-* @Return true if hash_key does not exists plan_roots. Otherwise sets 
-* thd->mem_root to reference the mem_root of the 
-* pl_obj and return false. Should only happen if query is a 
-* prepared stmt to be executed. 
-*/
-bool PLAN_CACHE::swap_mem_root(THD* thd){
-  if (!plan_root_exists()) return true;
-  auto plan_root = plan_roots.find(this->ptr_prep_stmt);
-  Swap_mem_root_guard mem_root_guard{thd, &plan_root->second.mem_root};
-  return false;
-};
-
-
 //@return true if item allready exists in plan_cache_dictionary, false otherwise.
 bool PLAN_CACHE::plan_root_exists(){
   return plan_roots.find(this->ptr_prep_stmt) != plan_roots.end();
-};
-
-// TODO: Implement hash function().
-std::string PLAN_CACHE::create_hash_key(std::string query){
-  return query;
 };
 
 void PLAN_CACHE::set_executing_prep_stmt(){

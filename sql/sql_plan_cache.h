@@ -19,10 +19,8 @@ class PLAN_CACHE {
  public:
     PLAN_CACHE(){}
     bool add_plan_root2();
-    bool add_plan_root(Query_block* query_block, AccessPath* access_path);
-    bool swap_mem_root(THD* thd);
+    //bool add_plan_root(Query_block* query_block, AccessPath* access_path);
     bool plan_root_exists();
-    std::string create_hash_key(std::string query);
     void set_executing_prep_stmt();
     bool is_executing_prep_stmt();
     bool plan_root_is_optimized();

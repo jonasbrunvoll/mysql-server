@@ -1078,8 +1078,6 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     
     
     
-    //std::string hash_key = thd->plan_cache.create_hash_key(thd->query().str);
-    //if (!thd->plan_cache.plan_root_exists()) {
     if (!thd->plan_cache.plan_root_is_optimized()){
       create_access_paths(thd);
     }
@@ -1096,32 +1094,10 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
     // after writing them.
     assert(!is_recursive());
 
-    /*
-    std::string hash_key = thd->plan_cache.create_hash_key(thd->query().str);
-    if (!thd->plan_cache.plan_root_exists(hash_key)) {
-      create_access_paths(thd);
-    }
-    */
-    //std::string hash_key = thd->plan_cache.create_hash_key(thd->query().str);
     if (!thd->plan_cache.plan_root_is_optimized()) { 
       create_access_paths(thd);
     }
   }
-  
-  // Resest flag to next query if the current query being executed is a prepared statement.
-  /*
-  if(thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
-    thd->plan_cache.set_executing_prep_stmt();
-    thd->plan_cache.set_ptr_prep_stmt(nullptr);
-  }
-  */
-  
-  /*
-  if(thd->plan_cache.is_executing_prep_stmt()) {
-    thd->plan_cache.set_executing_prep_stmt();
-    thd->plan_cache.ptr_stmt = nullptr;
-  }
-  */
   
   set_optimized();  // All query blocks optimized, update the state
 
@@ -1454,22 +1430,13 @@ void Query_expression::create_access_paths(THD *thd) {
     assert(join && join->is_optimized());
     m_root_access_path = join->root_access_path();
 
-    // Test Jonas
-    // Retrun if query is not an prepared stmt. 
-    //std::string hash_key = thd->plan_cache.create_hash_key(thd->query().str);
-    //if (!thd->plan_cache.is_executing_prep_stmt() && !thd->plan_cache.plan_root_is_optimized(hash_key)) return;
-    if (thd->plan_cache.get_ptr_prep_stmt() == nullptr && !thd->plan_cache.plan_root_is_optimized()) return;
-    
-    // Return if plan_root allready exists in plan cache. 
-    // if (thd->plan_cache.plan_root_exists(hash_key)) return;
+    // Return if query is not an prepared stmt.    
+    if (thd->plan_cache.get_ptr_prep_stmt() == nullptr) return;
     
     if (thd->plan_cache.plan_root_exists()) {
       thd->plan_cache.set_access_path(join->query_block, m_root_access_path);
     }
     
-
-    // Add plan root to cache and set pointer to access path.
-    //thd->plan_cache.add_plan_root(join->query_block, m_root_access_path);
     return;
   }
 
