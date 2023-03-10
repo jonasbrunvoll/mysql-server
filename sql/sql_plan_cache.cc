@@ -60,11 +60,12 @@ bool PLAN_CACHE::plan_root_exists(){
 };
 
 void PLAN_CACHE::set_executing_prep_stmt(){
-  this->executing_prep_stmt = !this->executing_prep_stmt;
+  this->executing_prep_stmt = true;
 };
 
 bool PLAN_CACHE::is_executing_prep_stmt(){
-  return this->executing_prep_stmt;
+  if (this->ptr_prep_stmt == nullptr) return false;
+  return true;
 };
 
 

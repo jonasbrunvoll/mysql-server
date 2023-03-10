@@ -1796,10 +1796,14 @@ void THD::cleanup_after_query() {
   m_view_ctx_list.clear();
 
   
-  // Cleanup and free items that were created during this execution
-  // Jonas -- both nested and parameterized queries work when thee are commented out!!
-  //cleanup_items(item_list());
-  //free_items();
+  /*
+    Cleanup and free items that were created during this execution,
+    but only if a prepard statment is not executed. 
+  */ 
+  if (!plan_cache.is_executing_prep_stmt()){
+    cleanup_items(item_list());
+    free_items();
+  }
   /* Reset where. */
   where = THD::DEFAULT_WHERE;
   /* reset table map for multi-table update */

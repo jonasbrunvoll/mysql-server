@@ -780,9 +780,9 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
     // Reset pointer to prepered statment in plan cache. 
     //thd->plan_cache.set_ptr_prep_stmt(nullptr);
     // Unflag exexution of prepared statment. 
-    if (!thd->plan_cache.plan_root_is_optimized()) {
-      thd->plan_cache.set_executing_prep_stmt();
-    }
+    //if (!thd->plan_cache.plan_root_is_optimized()) {
+      //thd->plan_cache.set_executing_prep_stmt();
+    //}
 
   } else {
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
