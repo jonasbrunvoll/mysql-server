@@ -1797,11 +1797,11 @@ void THD::cleanup_after_query() {
 
   
   /*
-    Cleanup and free items that were created during this execution,
-    but only if a prepard statment is not executed. 
+    Cleanup and free items that were created during this execution.
+    If a prepard statment, free items() is not executed. 
   */ 
+  cleanup_items(item_list());
   if (!plan_cache.is_executing_prep_stmt()){
-    cleanup_items(item_list());
     free_items();
   }
   /* Reset where. */
