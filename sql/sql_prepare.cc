@@ -103,6 +103,7 @@ When one supplies long data for a placeholder:
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include <list> 
 
 #include "decimal.h"
 #include "field_types.h"
@@ -178,6 +179,8 @@ When one supplies long data for a placeholder:
 #include "sql/window.h"
 #include "sql_string.h"
 #include "violite.h"
+#include "sql/sql_plan_cache.h" // Plan cache
+#include "sql/sql_plan_root.h"
 
 namespace resourcegroups {
 class Resource_group;
@@ -941,6 +944,12 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
   // Protects thd->user_vars
   mysql_mutex_lock(&thd->LOCK_thd_data);
 
+  // Jonas
+  std::vector<stmt_param> plan_root_params;
+  // Fetch pointer to correct plan root object, 
+  PLAN_ROOT *ptr_plan_root = thd->plan_cache.get_ptr_plan_root();
+  
+  
   for (Item_param **it = m_param_array; it < end; ++it) {
     Item_param *const param = *it;
     LEX_STRING *const varname = var_it++;
@@ -955,10 +964,13 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
         set_parameter_type(param, param->data_type(), param->unsigned_flag,
                            param->collation.collation);
       }
-
       if (param->set_from_user_var(thd, entry)) goto error;
       const String *val = param->query_val_str(thd, &buf);
       if (val == nullptr) goto error;
+      
+
+      // Add param to params.
+      plan_root_params.push_back(stmt_param{varname, val, param->data_type()});
 
       if (param->convert_value()) goto error;
 
@@ -983,6 +995,10 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
     }
     param->sync_clones();
   }
+
+  // Add parameter to plan root object.
+  ptr_plan_root->add_param_set(plan_root_params);
+
 
   // Copy part of query string after last parameter marker
   if (m_with_log && query->append(m_query_string.str + length,
@@ -1789,6 +1805,11 @@ void mysql_sql_stmt_prepare(THD *thd) {
       If there is a statement with the same name, remove it. It is ok to
       remove old and fail to insert a new one at the same time.
     */
+
+    // Run cleanup to prepare new statement with *stmt as key value. 
+    thd->plan_cache.cleanup_plan_root(stmt);     
+  
+
     if (stmt->is_in_use()) {
       my_error(ER_PS_NO_RECURSION, MYF(0));
       return;
@@ -1947,8 +1968,13 @@ void mysqld_stmt_execute(THD *thd, Prepared_statement *stmt, bool has_new_types,
 
   Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
 
-  // Set ptr in plan cache to the stmt that currently is being executed. 
+  // Set pointer in plan cache to the prepared stmt currently being executed. 
   thd->plan_cache.set_ptr_prep_stmt(stmt);
+  
+  bool exists = thd->plan_cache.plan_root_pair_exists(stmt);
+  if (!exists) thd->plan_cache.add_plan_root();
+
+
   if (stmt == nullptr) {
     my_error(ER_UNKNOWN_STMT_HANDLER, MYF(0), static_cast<int>(name.length),
              name.str, "EXECUTE");
@@ -1966,9 +1992,6 @@ void mysqld_stmt_execute(THD *thd, Prepared_statement *stmt, bool has_new_types,
   // Query text for binary, general or slow log, if any of them is open
   String expanded_query;
   if (stmt->set_parameters(thd, &expanded_query)) return;
-
-  // Ensure that the plan cache know a prepared stmt is to be executed,
-  thd->plan_cache.set_executing_prep_stmt();
 
   stmt->execute_loop(thd, &expanded_query, false);
 }

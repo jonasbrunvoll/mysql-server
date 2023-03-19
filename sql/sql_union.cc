@@ -1433,9 +1433,8 @@ void Query_expression::create_access_paths(THD *thd) {
     // Return if query is not an prepared stmt.    
     if (thd->plan_cache.get_ptr_prep_stmt() == nullptr) return;
     
-    if (thd->plan_cache.plan_root_exists()) {
-      thd->plan_cache.set_access_path(join->query_block, m_root_access_path);
-    }
+    // Set access_path(s) to query. 
+    thd->plan_cache.set_access_path(join->query_block, m_root_access_path);
     
     return;
   }

@@ -34,6 +34,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <iostream>
 
 #include <algorithm>
 #include <atomic>
@@ -760,16 +761,11 @@ bool optimize_secondary_engine(THD *thd) {
 bool Sql_cmd_dml::execute_inner(THD *thd) {
   Query_expression *unit = lex->unit;
 
-  /*
-  Hvis en prepared_stmt -> switch til prep_stmt sin mem_root. 
-  Switch tilbake etter optimize. 
-  */
+  // Chech is query is a prepard statment. 
   if (thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
-    bool exists = thd->plan_cache.plan_root_exists();
-    if (!exists) thd->plan_cache.add_plan_root2();
+    // Switch to plan roots mem_guard. 
     PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_ptr_plan_root();
     Swap_mem_root_guard mem_root_guard{thd, &ptr_plan_root->mem_root};
-
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
                      /*create_iterators=*/true, /*finalize_access_paths=*/true)){
       return true;
@@ -777,12 +773,6 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
 
     // Flag plan_root as optimized in the plan_cache. 
     thd->plan_cache.plan_root_set_optimized();
-    // Reset pointer to prepered statment in plan cache. 
-    //thd->plan_cache.set_ptr_prep_stmt(nullptr);
-    // Unflag exexution of prepared statment. 
-    //if (!thd->plan_cache.plan_root_is_optimized()) {
-      //thd->plan_cache.set_executing_prep_stmt();
-    //}
 
   } else {
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include <vector>
 
 #include "sql_class.h"                        // THD
 #include "include/my_alloc.h"                 // MEM_ROOT
@@ -11,16 +12,15 @@
 class AccessPath;
 class Prepared_statment;
 
+
 class PLAN_CACHE {
-    // Leg til array med pekere til plan-objekter.
     bool executing_prep_stmt = false;
     std::map<Prepared_statement*, PLAN_ROOT> plan_roots;
     Prepared_statement* ptr_prep_stmt = nullptr;
  public:
     PLAN_CACHE(){}
-    bool add_plan_root2();
-    //bool add_plan_root(Query_block* query_block, AccessPath* access_path);
-    bool plan_root_exists();
+    bool add_plan_root();
+    bool plan_root_pair_exists(Prepared_statement* ptr_prep_stmt);
     void set_executing_prep_stmt();
     bool is_executing_prep_stmt();
     bool plan_root_is_optimized();
@@ -29,6 +29,6 @@ class PLAN_CACHE {
     void set_ptr_prep_stmt(Prepared_statement* ptr_prep_stmt);
     Prepared_statement* get_ptr_prep_stmt();
     PLAN_ROOT* get_ptr_plan_root();
-
+    void cleanup_plan_root(Prepared_statement* _stmt); 
 };
 #endif /* SQL_PLAN_CACHE_INCLUDED */
