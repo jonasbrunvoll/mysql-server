@@ -55,7 +55,6 @@ void PLAN_ROOT::add_param_set(std::vector<stmt_param> _param_set){
     // Find similarity between existing set of parameters and new set. 
     bool similar = compare_param_sets(param_sets.front(), _param_set);
 
-
     // If param_sets are not similar, throw the existing and ensure
     // regenaration of new access_path.
     if (!similar) {
@@ -66,7 +65,7 @@ void PLAN_ROOT::add_param_set(std::vector<stmt_param> _param_set){
     } 
 
 };
-
+ 
 /*
     Estimates if the parmas between two statements. Should maybe be moved to plan_cache?
 */
@@ -74,5 +73,81 @@ bool PLAN_ROOT::compare_param_sets(std::vector <stmt_param> _s1, std::vector <st
     
     // If number of parameters dont match the similarity is not sufficent.
     if (_s1.size() != _s2.size()) return false;
-    return false;
+ 
+    // Compare each param of _s1 and _s2.  
+    for (unsigned int i = 0; i < _s1.size(); i++) {
+        if (_s1[i].varname != _s2[i].varname) {
+            std::cout << "varname not equal: " << std::endl;
+            return false;
+        }
+
+        if (_s1[i].val != _s2[i].val){
+            std::cout << "val not equal: " << std::endl; 
+            return false;
+        }
+        
+        if (_s1[i].param_type != _s2[i].param_type) {
+            std::cout << "param_type not equal" << std::endl;
+            return false;
+        } 
+            
+    }
+
+
+    /*
+    for (unsigned int i = 0; i < _s1.size(); i++) {
+        if (*_s1[i].varname->str != *_s2[i].varname->str) {
+            std::cout << "varname not equal: " << std::endl;
+            return false;
+        }
+        if (_s1[i].val != _s2[i].val){
+            std::cout << "val not equal: " << std::endl;
+            return false;
+        } 
+        if (_s1[i].param_type != _s2[i].param_type) {
+            std::cout << "param_type not equal" << std::endl;
+            return false;
+        } 
+            
+    }
+    */
+
+    return true;
 };
+
+
+/*
+void PLAN_ROOT::add_param_set2(std::vector<stmt_param2> _param_set){
+    
+    // Add param_set if first time stmt is being executed. 
+
+    // Find similarity between existing set of parameters and new set. 
+    //bool similar = compare_param_sets(paramsets.front(), _param_set);
+
+    if (param_sets2.size() == 0) {
+        param_sets2.push_back(_param_set);
+        return;
+    }
+    std::vector<stmt_param2> _s1 = param_sets2.front();
+
+    for (unsigned int i = 0; i < _s1.size(); i++) {
+        if (_s1[i].varname != _param_set[i].varname) {
+            std::cout << "varname not equal: " << std::endl;
+        }
+
+        if (_s1[i].val != _param_set[i].val){
+            std::cout << "val not equal: " << std::endl; 
+        }
+        
+        if (_s1[i].param_type != _param_set[i].param_type) {
+            std::cout << "param_type not equal" << std::endl;
+        } 
+            
+    }
+
+    // If param_sets are not similar, throw the existing and ensure
+    // regenaration of new access_path.
+    param_sets2.push_back(_param_set);
+
+};
+*/

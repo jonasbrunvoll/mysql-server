@@ -946,6 +946,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
 
   // Jonas
   std::vector<stmt_param> plan_root_params;
+  //std::vector<stmt_param2> plan_root_params2;
   // Fetch pointer to correct plan root object, 
   PLAN_ROOT *ptr_plan_root = thd->plan_cache.get_ptr_plan_root();
   
@@ -970,7 +971,18 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
       
 
       // Add param to params.
-      plan_root_params.push_back(stmt_param{varname, val, param->data_type()});
+      //plan_root_params.push_back(stmt_param{varname, val, param->data_type()});
+
+      std::string val_string = val->ptr();
+      
+      // Pamarm is varchar --> string value.
+      if (param->data_type() == 15){
+          unsigned first = val_string.find("'");
+          unsigned last = val_string.find_last_of("'");
+          val_string = val_string.substr(first,last-first+1);
+      }
+      plan_root_params.push_back(stmt_param{varname->str, val_string, param->data_type()});
+      //plan_root_params.push_back(stmt_param{varname->str, val->ptr(), param->data_type()});
 
       if (param->convert_value()) goto error;
 
@@ -998,6 +1010,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
 
   // Add parameter to plan root object.
   ptr_plan_root->add_param_set(plan_root_params);
+  //ptr_plan_root->add_param_set2(plan_root_params2);
 
 
   // Copy part of query string after last parameter marker
@@ -1961,6 +1974,7 @@ void mysqld_stmt_execute(THD *thd, Prepared_statement *stmt, bool has_new_types,
 */
 
  void mysql_sql_stmt_execute(THD *thd) {
+
   LEX *lex = thd->lex;
   const LEX_CSTRING &name = lex->prepared_stmt_name;
   DBUG_TRACE;
