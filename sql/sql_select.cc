@@ -772,7 +772,7 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
     }
 
     // Flag plan_root as optimized in the plan_cache. 
-    thd->plan_cache.plan_root_set_optimized();
+    thd->plan_cache.set_optimized_status_plan_root(true);
 
   } else {
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
