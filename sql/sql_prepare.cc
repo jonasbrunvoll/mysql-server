@@ -945,11 +945,10 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
   mysql_mutex_lock(&thd->LOCK_thd_data);
 
   // Jonas
+  LEX *lex = thd->lex;
+  const LEX_CSTRING &name = lex->prepared_stmt_name;
+  Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
   std::vector<stmt_param> plan_root_params;
-  //std::vector<stmt_param2> plan_root_params2;
-  // Fetch pointer to correct plan root object, 
-  PLAN_ROOT *ptr_plan_root = thd->plan_cache.get_ptr_plan_root();
-  
   
   for (Item_param **it = m_param_array; it < end; ++it) {
     Item_param *const param = *it;
@@ -975,14 +974,13 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
 
       std::string val_string = val->ptr();
       
-      // Pamarm is varchar --> string value.
+      // If param is varchar --> string value.
       if (param->data_type() == 15){
           unsigned first = val_string.find("'");
           unsigned last = val_string.find_last_of("'");
           val_string = val_string.substr(first,last-first+1);
       }
       plan_root_params.push_back(stmt_param{varname->str, val_string, param->data_type()});
-      //plan_root_params.push_back(stmt_param{varname->str, val->ptr(), param->data_type()});
 
       if (param->convert_value()) goto error;
 
@@ -1007,11 +1005,8 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
     }
     param->sync_clones();
   }
-
-  // Add parameter to plan root object.
-  ptr_plan_root->add_param_set(plan_root_params);
-  //ptr_plan_root->add_param_set2(plan_root_params2);
-
+  // Entry point to plan cache.
+  thd->plan_cache.entry("EXACT_MATCH_1", stmt, plan_root_params);
 
   // Copy part of query string after last parameter marker
   if (m_with_log && query->append(m_query_string.str + length,
@@ -1982,12 +1977,9 @@ void mysqld_stmt_execute(THD *thd, Prepared_statement *stmt, bool has_new_types,
 
   Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
 
-  // Set pointer in plan cache to the prepared stmt currently being executed. 
-  thd->plan_cache.set_ptr_prep_stmt(stmt);
+  // Entry point to plan cache.
+  //thd->plan_cache.entry("exact-match_1-entry", stmt);
   
-  bool exists = thd->plan_cache.plan_root_pair_exists(stmt);
-  if (!exists) thd->plan_cache.add_plan_root();
-
 
   if (stmt == nullptr) {
     my_error(ER_UNKNOWN_STMT_HANDLER, MYF(0), static_cast<int>(name.length),
