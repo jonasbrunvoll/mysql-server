@@ -944,12 +944,15 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
   // Protects thd->user_vars
   mysql_mutex_lock(&thd->LOCK_thd_data);
 
-  // Jonas
+  // Find *stmt. I needed as part of key-pair in plan cache. 
   LEX *lex = thd->lex;
   const LEX_CSTRING &name = lex->prepared_stmt_name;
   Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
+  
+  // Init empty param set. 
   std::vector<stmt_param> plan_root_params;
   
+      
   for (Item_param **it = m_param_array; it < end; ++it) {
     Item_param *const param = *it;
     LEX_STRING *const varname = var_it++;
@@ -969,17 +972,15 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
       if (val == nullptr) goto error;
       
 
-      // Add param to params.
-      //plan_root_params.push_back(stmt_param{varname, val, param->data_type()});
-
       std::string val_string = val->ptr();
-      
-      // If param is varchar --> string value.
+      // If data_type is varchar, get rid of all char except the string value between ' '.
       if (param->data_type() == 15){
           unsigned first = val_string.find("'");
           unsigned last = val_string.find_last_of("'");
           val_string = val_string.substr(first,last-first+1);
       }
+
+      // Add parameter to param set. 
       plan_root_params.push_back(stmt_param{varname->str, val_string, param->data_type()});
 
       if (param->convert_value()) goto error;
@@ -1006,7 +1007,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
     param->sync_clones();
   }
   // Entry point to plan cache.
-  thd->plan_cache.entry("EXACT_MATCH_1", stmt, plan_root_params);
+  thd->plan_cache.entry("INEXACT_MATCH_1", stmt, plan_root_params);
 
   // Copy part of query string after last parameter marker
   if (m_with_log && query->append(m_query_string.str + length,
@@ -1976,10 +1977,6 @@ void mysqld_stmt_execute(THD *thd, Prepared_statement *stmt, bool has_new_types,
   DBUG_PRINT("info", ("EXECUTE: %.*s\n", (int)name.length, name.str));
 
   Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
-
-  // Entry point to plan cache.
-  //thd->plan_cache.entry("exact-match_1-entry", stmt);
-  
 
   if (stmt == nullptr) {
     my_error(ER_UNKNOWN_STMT_HANDLER, MYF(0), static_cast<int>(name.length),

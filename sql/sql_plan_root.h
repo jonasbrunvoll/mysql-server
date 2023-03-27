@@ -34,12 +34,10 @@ class PLAN_ROOT {
         MEM_ROOT mem_root;
         bool get_optimized_status();
         void set_optimized_status(bool _status);
-        bool add_access_path(Query_block* _query_block, AccessPath* _access_path);
-        void clear_access_paths();
         std::vector<stmt_param> get_param_set();
         void set_param_set(std::vector<stmt_param> _param_set);
-        //bool compare_param_sets(std::vector <stmt_param> _s1,std::vector <stmt_param> _s2);
-
+        bool add_access_path(Query_block* _query_block, AccessPath* _access_path);
+        void clear_access_paths();
 };
 
 #endif /* SQL_PLAN_ROOT_INCLUDED */

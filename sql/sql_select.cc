@@ -764,7 +764,7 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   // Chech is query is a prepard statment. 
   if (thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
     // Switch to plan roots mem_guard. 
-    PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_ptr_plan_root();
+    PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_ptr_active_plan_root();
     Swap_mem_root_guard mem_root_guard{thd, &ptr_plan_root->mem_root};
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
                      /*create_iterators=*/true, /*finalize_access_paths=*/true)){
@@ -772,7 +772,7 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
     }
 
     // Flag plan_root as optimized in the plan_cache. 
-    thd->plan_cache.set_optimized_status_plan_root(true);
+      thd->plan_cache.set_optimized_status_plan_root(true);
 
   } else {
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,

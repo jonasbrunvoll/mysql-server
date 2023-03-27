@@ -5365,7 +5365,10 @@ void dispatch_sql_command(THD *thd, Parser_state *parser_state) {
   thd->lex->destroy();
   thd->end_statement();
   thd->cleanup_after_query();
-  thd->plan_cache.set_ptr_prep_stmt(nullptr); // Jonas - Reset flag to next execution.
+
+  // Clear plan_cache variables to next execution.
+  thd->plan_cache.clear_variabels();  
+
   assert(thd->change_list.is_empty());
 
   DEBUG_SYNC(thd, "query_rewritten");
