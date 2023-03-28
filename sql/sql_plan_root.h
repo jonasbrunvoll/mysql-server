@@ -26,7 +26,6 @@ class PLAN_ROOT {
     std::vector <stmt_param> param_set;
     std::map<Query_block*, AccessPath*> access_paths;
     public:
-        PLAN_ROOT(){}
         PLAN_ROOT(std::vector<stmt_param> _param_set) {
             param_set = _param_set;
         }

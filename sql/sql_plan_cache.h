@@ -24,27 +24,36 @@ enum cache_version {
     INEXACT_MATCH_N
 };
 
+// Enum values for replacment logic.
+enum replacement_logic {
+    UNDEFINDED,
+    FIFO,
+    LILO
+};
+
 class PLAN_CACHE {
     int max_num_entries;
     plan_root_key key_active_plan_root;
-    Prepared_statement* ptr_prep_stmt;
     std::map<plan_root_key, PLAN_ROOT> plan_roots;
-    std::map<std::string, cache_version> cache_whitelist;
+    std::map<std::string, cache_version> cache_versions;
+    std::map<std::string, replacement_logic> replacement_logics;
  public:
     PLAN_CACHE(){
         max_num_entries = 4;
-        ptr_prep_stmt = nullptr;
         key_active_plan_root =  std::make_pair(nullptr, 0);
-        cache_whitelist["EXACT_MATCH_1"] = EXACT_MATCH_1;
-        cache_whitelist["EXACT_MATCH_N"] = EXACT_MATCH_N;
-        cache_whitelist["INEXACT_MATCH_1"] = INEXACT_MATCH_1;
-        cache_whitelist["INEXACT_MATCH_N"] = INEXACT_MATCH_N;
+        cache_versions["EXACT_MATCH_1"] = EXACT_MATCH_1;
+        cache_versions["EXACT_MATCH_N"] = EXACT_MATCH_N;
+        cache_versions["INEXACT_MATCH_1"] = INEXACT_MATCH_1;
+        cache_versions["INEXACT_MATCH_N"] = INEXACT_MATCH_N;
+        replacement_logics["FIFO"] = FIFO;
+        replacement_logics["LILO"] = LILO;
     }
-    void entry(std::string _cache_version, 
+    void entry(std::string _cache_version,
+               std::string _replacement_logic, 
                Prepared_statement* _ptr_prep_stmt, 
                std::vector<stmt_param> _param_set);
     void clear_variabels();
-    void cleanup_plan_root(Prepared_statement* _ptr_prep_stmt); 
+    void cleanup_plan_root(THD* thd, Prepared_statement* _ptr_prep_stmt); 
     void set_access_path(Query_block* _query_block, AccessPath* _access_path);
     bool plan_root_is_optimized();
     void set_optimized_status_plan_root(bool _status);
@@ -61,7 +70,6 @@ class PLAN_CACHE {
 
 private:
     void set_key_active_plan_root(plan_root_key _key);
-    void set_ptr_prep_stmt(Prepared_statement* _ptr_prep_stmt);
     bool plan_root_exists(Prepared_statement* _ptr_prep_stmt);
     bool add_plan_root(std::vector<stmt_param> _param_set);
     bool exact_match(std::vector <stmt_param> _s1, std::vector <stmt_param> _s2);
