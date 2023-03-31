@@ -22,7 +22,7 @@ void PLAN_ROOT::set_optimized_status(bool _status){
     tha same query_block key as the incoming query_block - access_path pair. Otherwise, 
     returns false after successfully emplacing new access path. 
 */
-bool PLAN_ROOT::add_access_path(Query_block* _query_block, AccessPath* _access_path){
+bool PLAN_ROOT::set_access_path(Query_block* _query_block, AccessPath* _access_path){
     auto it = access_paths.emplace(_query_block, _access_path);
     if (!it.second) return true;
     return false;
@@ -38,4 +38,16 @@ void PLAN_ROOT::set_param_set(std::vector<stmt_param> _param_set){
 
 std::vector<stmt_param> PLAN_ROOT::get_param_set(){
     return param_set;
+};
+
+void PLAN_ROOT::increment_entries(){
+    entries_counter++;
+};
+
+void PLAN_ROOT::set_entries(int _entries){
+    entries_counter = _entries;
+};
+
+int PLAN_ROOT::get_entries(){
+    return entries_counter;
 };

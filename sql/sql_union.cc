@@ -1434,7 +1434,7 @@ void Query_expression::create_access_paths(THD *thd) {
     if (thd->plan_cache.get_ptr_prep_stmt() == nullptr) return;
     
     // Set access_path(s) to query. 
-    thd->plan_cache.set_access_path(join->query_block, m_root_access_path);
+    thd->plan_cache.set_access_path_plan_root(join->query_block, m_root_access_path);
     
     return;
   }

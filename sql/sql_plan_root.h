@@ -22,21 +22,29 @@ struct stmt_param {
 };
 
 class PLAN_ROOT {
+    /*
+        Counter to keep track of the number of entries 
+        since this plan root have been run.
+    */
+    int entries_counter;
     bool optimized_status = false;
     std::vector <stmt_param> param_set;
     std::map<Query_block*, AccessPath*> access_paths;
     public:
         PLAN_ROOT(std::vector<stmt_param> _param_set) {
+            entries_counter = 0;
             param_set = _param_set;
         }
-        // TODO: Make deconstructor work.
         MEM_ROOT mem_root;
         bool get_optimized_status();
         void set_optimized_status(bool _status);
         std::vector<stmt_param> get_param_set();
         void set_param_set(std::vector<stmt_param> _param_set);
-        bool add_access_path(Query_block* _query_block, AccessPath* _access_path);
+        bool set_access_path(Query_block* _query_block, AccessPath* _access_path);
         void clear_access_paths();
+        void increment_entries();
+        void set_entries(int _entries);
+        int get_entries();
 };
 
 #endif /* SQL_PLAN_ROOT_INCLUDED */

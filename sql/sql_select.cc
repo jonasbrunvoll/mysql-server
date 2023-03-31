@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
+#include <ctime>
 
 #include <algorithm>
 #include <atomic>
@@ -761,8 +762,13 @@ bool optimize_secondary_engine(THD *thd) {
 bool Sql_cmd_dml::execute_inner(THD *thd) {
   Query_expression *unit = lex->unit;
 
+  bool isPrepared = false;
+  std::clock_t start_exec = std::clock();
+  std::clock_t start_opt = std::clock();
   // Chech is query is a prepard statment. 
   if (thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
+
+    isPrepared = true;
     // Switch to plan roots mem_guard. 
     PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_ptr_active_plan_root();
     Swap_mem_root_guard mem_root_guard{thd, &ptr_plan_root->mem_root};
@@ -787,6 +793,8 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   // Perform secondary engine optimizations, if needed.
   if (optimize_secondary_engine(thd)) return true;
 
+  std::clock_t dur_opt = std::clock() - start_opt;
+  
   // We know by now that execution will complete (successful or with error)
   lex->set_exec_completed();
   if (lex->is_explain()) {
@@ -794,7 +802,15 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   } else {
     if (unit->execute(thd)) return true;
   }
+  std::clock_t dur_exec = std::clock() - start_exec;
 
+  // Cast to ms
+  dur_opt = dur_opt / (double)(CLOCKS_PER_SEC / 1000);
+  dur_exec = dur_exec / (double)(CLOCKS_PER_SEC / 1000);
+
+  
+ 
+  std::cerr <<  "Is prepared statment: " << isPrepared << " dur_opt: " << dur_opt << "ms. dur_exec: " << dur_exec << "ms." << std::endl;
   return false;
 }
 

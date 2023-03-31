@@ -13,63 +13,58 @@
 class AccessPath;
 
 
-void PLAN_CACHE::entry(std::string _cache_version, std::string _replacement_logic, Prepared_statement* _ptr_prep_stmt, 
-                       std::vector<stmt_param> _param_set) {
+void PLAN_CACHE::entry(std::string _match_logic, std::string _entry_logic, std::string _replacement_logic, Prepared_statement* _ptr_prep_stmt, std::vector<stmt_param> _param_set) {
   // Chech if plan_root with current stmt* already exists.
   bool exists = plan_root_exists(_ptr_prep_stmt);
   
   if (!exists) {
     // Set key to plan_root currently being executed.
     key_active_plan_root = std::make_pair(_ptr_prep_stmt, 1);
-    
+  
     // Add plan_root to plan_roots.
     add_plan_root(_param_set);
     return;
   }
 
-  // Init values for switch cases 1 entry.
-  PLAN_ROOT* ptr_plan_root;
+  // Set pointer to correct match logic function. 
+  MatchFunction match_function;
+
+  switch (match_logics[_match_logic]){
+  case EXACT_MATCH:
+    match_function = &PLAN_CACHE::exact_match;
+    break;
+  case INEXACT_MATCH:
+    match_function = &PLAN_CACHE::inexact_match;
+    break;
+  case WORST_MATCH:
+    match_function = &PLAN_CACHE::exact_match;
+    break;
+  default:
+    break;
+  }
 
   // Init values for switch cases N entries.
   int num_entries;
-  //std::vector<PLAN_ROOT*> plan_root_ptrs;
   std::list<std::vector<stmt_param>> param_sets;
 
 
-  // Switch to correct cache version.
-  switch (cache_versions[_cache_version]) {
-  case EXACT_MATCH_1:
-  
-    /*
-      Retrive and compare params from existing plan_root.
-      If inexact match, scrap old access_paths and creat
-      new ones. Otherwise, proceed with the same access_paths. 
-    */
+  plan_root_key key_least_used_version;
+  int version = -1;
+  int num_entries_since_last_used = -1;
+
+  // Entries
+  switch (entry_logics[_entry_logic]) {
+  case ONE_ENTRY:
     key_active_plan_root = std::make_pair(_ptr_prep_stmt, 1);
-    ptr_plan_root = get_ptr_active_plan_root();
-    if (!exact_match(ptr_plan_root->get_param_set(), _param_set)){
+    //ptr_plan_root = get_ptr_active_plan_root();
+    if (!(this->*match_function)(get_ptr_active_plan_root()->get_param_set(), _param_set)){
       set_optimized_status_plan_root(false);
-      ptr_plan_root->clear_access_paths();
-      ptr_plan_root->set_param_set(_param_set);
+      get_ptr_active_plan_root()->clear_access_paths();
+      get_ptr_active_plan_root()->set_param_set(_param_set);      
     }
     break;
-  case INEXACT_MATCH_1:
-    /*
-      Retrive and compare parmas from existing plan_root. 
-      If distance between the param sets are to large, scrap 
-      old access_paths and create new ones. Otherwise, 
-      proceed with the same access_paths. 
-    */
-    key_active_plan_root = std::make_pair(_ptr_prep_stmt, 1);
-    ptr_plan_root = get_ptr_active_plan_root();
-    if (!inexact_match(ptr_plan_root->get_param_set(), _param_set)){
-      set_optimized_status_plan_root(false);
-      ptr_plan_root->clear_access_paths();
-      ptr_plan_root->set_param_set(_param_set);
-    }
-    break;
-  case EXACT_MATCH_N:
-    /*
+  case N_ENTRIES:
+  /*
     Retrive and compare parma sets from existing plan_roots. 
 
     If none exact match is found and the number of existing plan_roots is less
@@ -79,38 +74,38 @@ void PLAN_CACHE::entry(std::string _cache_version, std::string _replacement_logi
     max_num_entries, use some type of replacement logic to get rid of one of
     the existing plan_roots, before creating a new plan_root and add to plan roots.   
     */
-
+      
     // Find parmas for existing plan_roots.
     num_entries = num_plan_root_entries(_ptr_prep_stmt);
+
+    // Find parmas for existing plan_roots.
+     
     for (int i = 1; i <= num_entries; ++i) {
       
       // Fetch plan_root and creat copy of param set.
       auto plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
-      std::vector<stmt_param> fetched_param_set = plan_root->second.get_param_set();
+      std::vector<stmt_param> param_set = plan_root->second.get_param_set();
 
       // If exact match use existing plan_root.
-      if (exact_match(fetched_param_set, _param_set)){
-         key_active_plan_root = plan_root->first;
-         return;
+      if (!(this->*match_function)(param_set, _param_set)){
+        key_active_plan_root = plan_root->first;
+        return;
       }
       // Collect param set for further analysis.
-      param_sets.push_back(fetched_param_set); 
+      param_sets.push_back(param_set); 
     }
 
     /*
       If none exact match, but num_entries does not excced max_num_entries,
       create new plan_root and add to plan_roots. 
     */
-    if (num_entries < max_num_entries) {
+    if (num_entries < version_limit) {
       key_active_plan_root = std::make_pair(_ptr_prep_stmt, num_entries+1);
       add_plan_root(_param_set);
       return;
     }
+  
 
-    /*
-      If none exact match and num entries exeedes max_num_entries. Replace an existing
-      plan.
-    */
     switch (replacement_logics[_replacement_logic]) {
     case FIFO:
       // Erase the first version from plan_roots.
@@ -118,7 +113,7 @@ void PLAN_CACHE::entry(std::string _cache_version, std::string _replacement_logi
       
       // Move existing versions forward in cache.
       for (int i = 1; i < num_entries; ++i) {
-      
+    
         // Fetch plan_root and creat copy of param set.
         auto item = plan_roots.find(std::make_pair(_ptr_prep_stmt, i+1));
         auto key = item->first;
@@ -129,6 +124,7 @@ void PLAN_CACHE::entry(std::string _cache_version, std::string _replacement_logi
       key_active_plan_root = std::make_pair(_ptr_prep_stmt, num_entries+1);
       add_plan_root(_param_set);
       break;
+
     case LILO:
        // Erase the last version from plan_roots.
       plan_roots.erase(std::make_pair(_ptr_prep_stmt, num_entries));
@@ -136,44 +132,45 @@ void PLAN_CACHE::entry(std::string _cache_version, std::string _replacement_logi
       // Add new version to plan_roots. 
       key_active_plan_root = std::make_pair(_ptr_prep_stmt, num_entries);
       add_plan_root(_param_set);
-      
       break;
+
+    case LRU: 
+      // Move existing versions forward in cache.
+      for (int i = 1; i < num_entries; ++i) {
+      
+        // Fetch plan_root
+        auto plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
+        if (num_entries_since_last_used < plan_root->second.get_entries()){
+          num_entries_since_last_used = plan_root->second.get_entries();
+          auto key = plan_root->first;
+          key_least_used_version = key;
+          version = key.second;
+        }
+      }
+      // Remove least recently used plan_root version. 
+      plan_roots.erase(key_least_used_version);
+
+
+      // Add new version to plan_roots. 
+      key_active_plan_root = std::make_pair(_ptr_prep_stmt, version);
+      add_plan_root(_param_set);
+
+    break;
     default:
       break;
     }
 
-  
-    break;
-  case INEXACT_MATCH_N:
-    /*
-      Retrive and compare params from existing plan_roots
-
-      If none exact match is found use some cache hit logic to determine if any
-      of the existing plan_roots are close enough to be used. 
-      
-      If none plan_roots are reusable and the existing number of plan_roots is
-      less than max_num_entries, create a new plan root and add to plan roots.
-
-      If none plan_roots are reusable and the existing number of plan_roots
-      excedes max_num_entries, use some replacement logic to get rid of one
-      the existing plan roots, before creating a new plan root and add to plan roots.
-    */
-
-    break;
   default:
     break;
   }
 };
 
-
-void PLAN_CACHE::clear_variabels(){
-  set_key_active_plan_root(std::make_pair(nullptr, 0));
+void PLAN_CACHE::clear_key_active_plan_root(){
+  key_active_plan_root = std::make_pair(nullptr, 0);
 };
 
-/*
-  Removes plan_root from plan_roots and clear plan cache variables. 
-  TODO: Delete plan_root object. FOr example with a deconstructor.  
-*/
+
+//Removes plan_root from plan_roots and clear plan cache variables. 
 void PLAN_CACHE::cleanup_plan_root(THD* thd, Prepared_statement* _ptr_prep_stmt){
  for (auto it = plan_roots.begin(); it != plan_roots.end(); ) {
     auto key = it->first;
@@ -186,12 +183,12 @@ void PLAN_CACHE::cleanup_plan_root(THD* thd, Prepared_statement* _ptr_prep_stmt)
     }
  }
   thd->free_items();
-  clear_variabels();
+  clear_key_active_plan_root();
 };
 
-void PLAN_CACHE::set_access_path(Query_block* _query_block, AccessPath* _access_path){
+void PLAN_CACHE::set_access_path_plan_root(Query_block* _query_block, AccessPath* _access_path){
    auto plan_root = plan_roots.find(key_active_plan_root);
-   plan_root->second.add_access_path(_query_block, _access_path);
+   plan_root->second.set_access_path(_query_block, _access_path);
 };
 
 
@@ -208,10 +205,6 @@ void PLAN_CACHE::set_optimized_status_plan_root(bool _status){
 bool PLAN_CACHE::is_executing_prep_stmt(){
   if (key_active_plan_root.first == nullptr) return false;
   return true;
-};
-
-void PLAN_CACHE::set_key_active_plan_root(plan_root_key _key){
-  key_active_plan_root = _key;
 };
 
 plan_root_key PLAN_CACHE::get_key_active_plan_root(){
@@ -241,7 +234,7 @@ int PLAN_CACHE::num_plan_root_entries(Prepared_statement* _ptr_prep_stmt){
 };
 
 bool PLAN_CACHE::add_plan_root(std::vector<stmt_param> _param_set){
-  // Add new version to plan roots2
+  // Add new version to plan roots.
     auto it = plan_roots.emplace(key_active_plan_root, PLAN_ROOT(_param_set));
     if (!it.second) return true;
     return false;
