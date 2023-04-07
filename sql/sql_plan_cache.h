@@ -100,14 +100,14 @@ private:
         std::string _replacement_logic, 
         Prepared_statement* _ptr_prep_stmt, 
         std::vector<stmt_param> _param_set,
-        unsigned int _num_entries
+        std::vector<plan_root_key> _versions
     );
 
     void version_replacement(
         std::string _replacement_logic,
         Prepared_statement* _ptr_prep_stmt, 
         std::vector<stmt_param> _param_set,
-        unsigned int _num_entries
+        std::vector<plan_root_key> _versions
     );
 
     bool plan_root_exists(
@@ -132,7 +132,18 @@ private:
         int _versions, 
         Prepared_statement* _ptr_prep_stmt  
     );
+
+    PLAN_ROOT* get_ptr_plan_root(
+        plan_root_key _key
+    );
+
+    std::vector<plan_root_key> get_version_keys(
+        Prepared_statement* _ptr_prep_stmt
+    );
     
+    std::vector<PLAN_ROOT*> get_version_ptrs(
+        Prepared_statement* _ptr_prep_stmt
+    );
 };
 #endif /* SQL_PLAN_CACHE_INCLUDED */
 

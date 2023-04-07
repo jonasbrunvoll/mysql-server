@@ -51,3 +51,26 @@ void PLAN_ROOT::set_entries(int _entries){
 int PLAN_ROOT::get_entries(){
     return entries_counter;
 };
+
+unsigned int PLAN_ROOT::get_timestamp_created(){
+    return timestamp_created;
+};
+
+unsigned int PLAN_ROOT::get_timestamp_last_used(){
+    return timestamp_last_used;
+};
+
+void PLAN_ROOT::set_timestamp_created(){
+    timestamp_created = get_timestamp_current_time();
+}
+
+void PLAN_ROOT::set_timestamp_last_used(){
+    timestamp_last_used = get_timestamp_current_time();
+}
+
+// PRIVATE FUNCTIONS //
+unsigned int PLAN_ROOT::get_timestamp_current_time(){
+    const auto p = std::chrono::system_clock::now();
+    return (unsigned int) std::chrono::duration_cast<std::chrono::seconds>(p.time_since_epoch()).count();
+}
+

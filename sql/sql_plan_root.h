@@ -6,7 +6,8 @@
 #include <string>
 #include <vector>
 #include <list>
-
+#include <chrono>
+#include <thread>
 
 #include "include/my_alloc.h"           // MEM_ROOT 
 #include "include/lex_string.h"         // LEX_STRING
@@ -27,6 +28,8 @@ class PLAN_ROOT {
         since this plan root have been run.
     */
     int entries_counter;
+    unsigned int timestamp_created;
+    unsigned int timestamp_last_used; 
     bool optimized_status = false;
     std::vector <stmt_param> param_set;
     std::map<Query_block*, AccessPath*> access_paths;
@@ -34,6 +37,8 @@ class PLAN_ROOT {
         PLAN_ROOT(std::vector<stmt_param> _param_set) {
             entries_counter = 0;
             param_set = _param_set;
+            set_timestamp_created();
+            set_timestamp_last_used();
         }
         MEM_ROOT mem_root;
         bool get_optimized_status();
@@ -45,6 +50,11 @@ class PLAN_ROOT {
         void increment_entries();
         void set_entries(int _entries);
         int get_entries();
+        void set_timestamp_created();
+        void set_timestamp_last_used();
+        unsigned int get_timestamp_created();
+        unsigned int get_timestamp_last_used();
+    private:
+        unsigned int get_timestamp_current_time();
 };
-
 #endif /* SQL_PLAN_ROOT_INCLUDED */

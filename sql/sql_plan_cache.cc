@@ -25,10 +25,11 @@ void PLAN_CACHE::entry(
   
   if (!exists) {
     // Perform replacement of a stored plan root if cache limit is execeeded. 
-    global_replacement(_replacement_logic,_ptr_prep_stmt,_param_set,0);
+    std::vector<plan_root_key> versions;
+    global_replacement(_replacement_logic,_ptr_prep_stmt,_param_set, versions);
 
     // Set key to plan_root currently being executed.
-    key_active_plan_root = std::make_pair(_ptr_prep_stmt, 0);
+    key_active_plan_root = std::make_pair(_ptr_prep_stmt, 1);
   
     // Add plan_root to plan_roots.
     add_plan_root(_param_set);
@@ -40,16 +41,18 @@ void PLAN_CACHE::entry(
     case ONE_ENTRY:{
       // Set key to plan_root currently being executed.
       key_active_plan_root = std::make_pair(_ptr_prep_stmt, 1);
+      get_ptr_active_plan_root()->set_timestamp_last_used();
 
       // If inexact match, continue execution by reusing existing execution plan. 
       if (match_logics[_match_logic] == INEXACT_MATCH) break;
 
-      // Re-optimize if now exact match. Otherwise, reuse existing execution plan.
-      if (!exact_match(get_ptr_active_plan_root()->get_param_set(), _param_set)){
-        set_optimized_status_plan_root(false);
-        get_ptr_active_plan_root()->clear_access_paths();
-        get_ptr_active_plan_root()->set_param_set(_param_set);      
-      }
+      // Break if exact match between param sets.     
+      if (exact_match(_param_set, get_ptr_active_plan_root()->get_param_set())) break;
+      
+      // Re-optimize prepared statment. 
+      set_optimized_status_plan_root(false);
+      get_ptr_active_plan_root()->clear_access_paths();
+      get_ptr_active_plan_root()->set_param_set(_param_set);      
       break;
     }
 
@@ -64,8 +67,43 @@ void PLAN_CACHE::entry(
       the existing plan_roots, before creating a new plan_root and add to plan roots.   
     */
     case N_ENTRIES:{      
+
+      // Fetch versions
+      std::vector<plan_root_key> version_keys = get_version_keys(_ptr_prep_stmt);
+
+      for (auto &key: version_keys){
+        auto plan_root = plan_roots.find(key);
+        std::vector<stmt_param> param_set = plan_root->second.get_param_set();
+
+        // If exact match use existing plan_root.
+        if (exact_match(param_set, _param_set)){
+          key_active_plan_root = plan_root->first;
+          get_ptr_active_plan_root()->set_timestamp_last_used();
+          return;
+        }
+      }
+
+      /*
+      std::vector<PLAN_ROOT*> version_ptrs = get_version_ptrs(_ptr_prep_stmt);
+      for (auto &ptr_plan_root: version_ptrs){  
+         // Fetch plan_root and creat copy of param set.
+        std::vector<stmt_param> param_set = ptr_plan_root->get_param_set();
+
+        // If exact match use existing plan_root.
+        if (exact_match(param_set, _param_set)){
+          key_active_plan_root = ptr_plan_root->first;
+          get_ptr_active_plan_root()->set_timestamp_last_used();
+          return;
+        }
+      }
+      */
+
+
+
+      /*
       // FInd number of plan roots with *stmt in key. 
       unsigned int num_entries = num_plan_root_entries(_ptr_prep_stmt);
+
 
       // Find parmas for existing plan_roots.
       for (unsigned int i = 1; i <= num_entries; ++i) {
@@ -77,24 +115,27 @@ void PLAN_CACHE::entry(
         // If exact match use existing plan_root.
         if (exact_match(param_set, _param_set)){
           key_active_plan_root = plan_root->first;
+          get_ptr_active_plan_root()->set_timestamp_last_used();
           return;
         }
       }
+      */
+      
 
       // Perform replacement of a stored plan root if cache limit is execeeded. 
-      global_replacement(_replacement_logic,_ptr_prep_stmt,_param_set, num_entries);
+      global_replacement(_replacement_logic,_ptr_prep_stmt,_param_set, version_keys);
 
       /*
         If none match, but num_entries does not excced max_num_entries,
         create new plan_root and add to plan_roots. 
       */
-      if (num_entries < version_limit) {
-        key_active_plan_root = std::make_pair(_ptr_prep_stmt, num_entries+1);
+      if (version_keys.size() < version_limit) {
+        key_active_plan_root = std::make_pair(_ptr_prep_stmt, version_keys.size()+1);
         add_plan_root(_param_set);
         return;
       }
 
-      version_replacement(_replacement_logic, _ptr_prep_stmt, _param_set, num_entries);
+      version_replacement(_replacement_logic, _ptr_prep_stmt, _param_set, version_keys);
     }
     default:{
       break;
@@ -106,10 +147,40 @@ void PLAN_CACHE::version_replacement(
   std::string _replacement_logic, 
   Prepared_statement* _ptr_prep_stmt, 
   std::vector<stmt_param> _param_set, 
-  unsigned int _num_entries
+  std::vector<plan_root_key> _version_keys
 ){
   switch (replacement_logics[_replacement_logic]) {
       case FIFO:{
+        plan_root_key curr_key;
+        unsigned int timestamp = INT_MAX;
+
+        for (auto &key: _version_keys){
+          auto plan_root = plan_roots.find(key);
+          curr_key = plan_root->first;
+          if(timestamp > get_ptr_plan_root(curr_key)->get_timestamp_created()){
+            timestamp = get_ptr_plan_root(curr_key)->get_timestamp_created();
+          }
+        }
+
+        /*
+        for (unsigned int i = 1; i <= _num_entries; ++i) {
+          auto ptr_plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
+          key = ptr_plan_root->first;
+          if(timestamp > get_ptr_plan_root(key)->get_timestamp_created()){
+            timestamp = get_ptr_plan_root(key)->get_timestamp_created();
+          }
+        }
+        */
+
+        // Erase the first version from plan_roots.
+        //plan_roots.erase(std::make_pair(_ptr_prep_stmt, version));
+        plan_roots.erase(curr_key);
+
+        // Add new version to plan_roots. 
+        key_active_plan_root = curr_key;
+        add_plan_root(_param_set);
+        break;
+        /*
         // Erase the first version from plan_roots.
         plan_roots.erase(std::make_pair(_ptr_prep_stmt, 1));
         
@@ -121,21 +192,47 @@ void PLAN_CACHE::version_replacement(
           auto key = item->first;
           key.second = key.second - 1;
         }
+        */
         
-        // Add new version to plan_roots. 
-        key_active_plan_root = std::make_pair(_ptr_prep_stmt, _num_entries+1);
-        add_plan_root(_param_set);
-        break;
       }
       case LILO:{
+        plan_root_key curr_key;
+        unsigned int timestamp = 0;
 
+        for (auto &key: _version_keys){
+          auto plan_root = plan_roots.find(key);
+          curr_key = plan_root->first;
+          if(timestamp < get_ptr_plan_root(curr_key)->get_timestamp_created()){
+            timestamp = get_ptr_plan_root(curr_key)->get_timestamp_created();
+          }
+        }
+
+
+        /*
+        for (unsigned int i = 1; i <= _num_entries; ++i) {
+          auto ptr_plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
+          key = ptr_plan_root->first;
+          if(timestamp < get_ptr_plan_root(key)->get_timestamp_created()){
+            timestamp = get_ptr_plan_root(key)->get_timestamp_created();
+          }
+        }
+        */
+
+          // Erase the first version from plan_roots.
+        plan_roots.erase(curr_key);
+
+        // Add new version to plan_roots. 
+        key_active_plan_root = curr_key;
+        add_plan_root(_param_set);
+        break;
+        /*
         // Erase the last version from plan_roots.
         plan_roots.erase(std::make_pair(_ptr_prep_stmt, _num_entries));
         
         // Add new version to plan_roots. 
         key_active_plan_root = std::make_pair(_ptr_prep_stmt, _num_entries);
         add_plan_root(_param_set);
-        break;
+        */
       }
       /*
         Iterate over all version of prepared stmt and fetch 
@@ -143,6 +240,35 @@ void PLAN_CACHE::version_replacement(
         erased and a new plan root is
       */ 
       case LRU:{
+        plan_root_key curr_key;
+        unsigned int timestamp = INT_MAX;
+
+        for (auto &key: _version_keys){
+          auto plan_root = plan_roots.find(key);
+          curr_key = plan_root->first;
+          if(timestamp > get_ptr_plan_root(curr_key)->get_timestamp_last_used()){
+            timestamp = get_ptr_plan_root(curr_key)->get_timestamp_last_used();
+          }
+        }
+
+        /*
+        for (unsigned int i = 1; i <= _num_entries; ++i) {
+          auto ptr_plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
+          key = ptr_plan_root->first;
+          if(timestamp > get_ptr_plan_root(key)->get_timestamp_last_used() ){
+            timestamp = get_ptr_plan_root(key)->get_timestamp_last_used();
+          }
+        }
+        */
+
+        // Remove least recently used plan_root version. 
+        plan_roots.erase(curr_key);
+
+        // Add new version to plan_roots. 
+        key_active_plan_root = curr_key;
+        add_plan_root(_param_set);
+
+        /*
         plan_root_key current_key;
         int current_version = -1;
         int entries_since_last_used = -1;
@@ -155,25 +281,28 @@ void PLAN_CACHE::version_replacement(
             current_version = plan_root->first.second;
           }
         }
-        // Remove least recently used plan_root version. 
-        plan_roots.erase(current_key);
-
-        // Add new version to plan_roots. 
-        key_active_plan_root = std::make_pair(_ptr_prep_stmt, current_version);
-        add_plan_root(_param_set);
+        */
+        
         break;
       }
       case WORST_MATCH:{
         // Collect all param sets from plan_roots where current *stmt is part of key.
         std::vector<std::vector<stmt_param>> param_sets;
-        for (unsigned int i = 1; i <= _num_entries; ++i) {        
-          auto plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
+
+        for (auto &key: _version_keys){
+          auto plan_root = plan_roots.find(key);
           param_sets.push_back(plan_root->second.get_param_set());   
         }
 
+        /*
+        for (unsigned int i = 1; i <= _num_entries; ++i) {        
+          auto ptr_plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
+          param_sets.push_back(ptr_plan_root->second.get_param_set());   
+        }
+        */
+
         // Compare _param_set against each param set in param sets.    
-        plan_root_key current_key;
-        unsigned int current_version;
+        plan_root_key key;
         unsigned int most_unsimilar_params = 0;
         
         for (unsigned int i = 0; i < param_sets.size(); i++) {
@@ -181,17 +310,16 @@ void PLAN_CACHE::version_replacement(
           if (!exact_match(_param_set, param_sets[i])) counter++;
           
           if (most_unsimilar_params < counter) {
-            auto plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i+1));
-            current_key = plan_root->first;
-            current_version = plan_root->first.second;
+            auto ptr_plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i+1));
+            key = ptr_plan_root->first;
           } 
         } 
         
         // Remove least recently used plan_root version. 
-        plan_roots.erase(current_key);
+        plan_roots.erase(key);
 
         // Add new version to plan_roots. 
-        key_active_plan_root = std::make_pair(_ptr_prep_stmt, current_version);
+        key_active_plan_root = key;
         add_plan_root(_param_set);
         break;
       }
@@ -205,7 +333,7 @@ void PLAN_CACHE::global_replacement(
   std::string _replacement_logic, 
   Prepared_statement* _ptr_prep_stmt,
   std::vector<stmt_param> _param_set,
-  unsigned int _num_entries
+  std::vector<plan_root_key> _version_keys
 ){
 
   // Retrun if cache there is space for one ore more plan roots in plan_cache. 
@@ -213,37 +341,42 @@ void PLAN_CACHE::global_replacement(
   
   switch (replacement_logics[_replacement_logic]) {
     case FIFO:{
-
-      // Erase the first plan root in from plan_roots.
-      plan_roots.erase(plan_roots.begin());
-            
-      // Move existing versions forward in cache.
-      for (unsigned int i = 1; i < _num_entries; ++i) {
-    
-        // Fetch plan_root and creat copy of param set.
-        auto item = plan_roots.find(std::make_pair(_ptr_prep_stmt, i+1));
-        auto key = item->first;
-        key.second = key.second - 1;
+      plan_root_key key;
+      unsigned int timestamp = INT_MAX;
+      for (auto &it: plan_roots){   
+         if(timestamp > it.second.get_timestamp_created()){
+            key = it.first;
+            timestamp = it.second.get_timestamp_created();
+          }
       }
+      // Erase the first plan root in from plan_roots.
+      plan_roots.erase(key);            
       break;
     }
     case LILO:{
+      plan_root_key key;
+      unsigned int timestamp = 0;
+      for (auto &it: plan_roots){   
+         if(timestamp < it.second.get_timestamp_created()){
+            key = it.first;
+            timestamp = it.second.get_timestamp_created();
+          }
+      }
        // Erase the last plan root added to plan_roots.
-      plan_roots.erase(plan_roots.end());
+      plan_roots.erase(key);
       break;
     }
     case LRU:{
-      plan_root_key current_key;
-      int entries_since_last_used = -1;
-      
-      for (auto &it: plan_roots){        
-        if (entries_since_last_used < it.second.get_entries()){
-          entries_since_last_used = it.second.get_entries();
-          current_key = it.first;
-         }
+      plan_root_key key;
+      unsigned int timestamp = INT_MAX;
+      for (auto &it: plan_roots){   
+         if(timestamp > it.second.get_timestamp_last_used()){
+            key = it.first;
+            timestamp = it.second.get_timestamp_last_used();
+          }
       }
       // Remove least recently used plan_root. 
-      plan_roots.erase(current_key);    
+      plan_roots.erase(key);    
       break;
     } 
     case WORST_MATCH:{
@@ -251,29 +384,36 @@ void PLAN_CACHE::global_replacement(
       // Collect all param sets from plan_roots where current *stmt is part of key.
       std::vector<std::vector<stmt_param>> param_sets;
 
-      if (_num_entries != 0){
+      if (_version_keys.size() != 0){
+        for (auto &key: _version_keys){
+          auto plan_root = plan_roots.find(key);
+          std::vector<stmt_param> v = plan_root->second.get_param_set();
+          param_sets.push_back(v);   
+        }
+        /*
         for (unsigned int i = 1; i <= _num_entries; ++i) {        
             auto plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i));
             std::vector<stmt_param> v = plan_root->second.get_param_set();
             param_sets.push_back(v);   
-          }
+        }
+        */
 
-          // Compare _param_set against each param set in param sets.    
-          plan_root_key current_key;
-          unsigned int current_version;
-          unsigned int most_unsimilar_params = 0;
+        // Compare _param_set against each param set in param sets.    
+        plan_root_key current_key;
+        unsigned int current_version;
+        unsigned int most_unsimilar_params = 0;
+        
+        for (unsigned int i = 0; i < param_sets.size(); i++) {
+          unsigned int counter = 0;
           
-          for (unsigned int i = 0; i < param_sets.size(); i++) {
-            unsigned int counter = 0;
-           
-            if(!exact_match(_param_set, param_sets[i])) counter++;
-            
-            if (most_unsimilar_params < counter) {
-              auto plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i+1));
-              current_key = plan_root->first;
-              current_version = plan_root->first.second;
-            } 
-          }
+          if(!exact_match(_param_set, param_sets[i])) counter++;
+          
+          if (most_unsimilar_params < counter) {
+            auto plan_root = plan_roots.find(std::make_pair(_ptr_prep_stmt, i+1));
+            current_key = plan_root->first;
+            current_version = plan_root->first.second;
+          } 
+        }
           
           // Remove least recently used plan_root version. 
           plan_roots.erase(current_key);
@@ -323,6 +463,8 @@ void PLAN_CACHE::global_replacement(
       break;
     }
       default:{
+        // Erase the last plan root added to plan_roots.
+        plan_roots.erase(plan_roots.end());
         break;
       }
     }
@@ -344,7 +486,6 @@ bool PLAN_CACHE::exact_match(std::vector <stmt_param> _s1, std::vector <stmt_par
     }
     return true;
 };
-
 
 
 void PLAN_CACHE::clear_key_active_plan_root(){
@@ -399,6 +540,12 @@ PLAN_ROOT* PLAN_CACHE::get_ptr_active_plan_root(){
 };
 
 
+PLAN_ROOT* PLAN_CACHE::get_ptr_plan_root(plan_root_key _key){
+  auto plan_root = plan_roots.find(_key);
+  return &plan_root->second;
+};
+
+
 // Count number of versions.
 unsigned int PLAN_CACHE::num_plan_root_entries(Prepared_statement* _ptr_prep_stmt){
   unsigned int counter = 0;
@@ -445,5 +592,31 @@ void PLAN_CACHE::rewrite_version_numbers(
     auto key = item->first;
     key.second = key.second - 1;
   }
+};
+
+
+
+std::vector<plan_root_key> PLAN_CACHE::get_version_keys(Prepared_statement* _ptr_prep_stmt){
+  std::vector<plan_root_key> versions;
+  for (const auto &it: plan_roots){
+    auto plan_root_key = it.first;
+    if (plan_root_key.first == _ptr_prep_stmt) {
+      versions.push_back(plan_root_key);
+    }
+  }
+  return versions;
+}
+
+
+std::vector<PLAN_ROOT*> PLAN_CACHE::get_version_ptrs(Prepared_statement* _ptr_prep_stmt){
+  std::vector<PLAN_ROOT*> ptrs;
+  for (const auto &it: plan_roots){
+    auto plan_root_key = it.first;
+    if (plan_root_key.first == _ptr_prep_stmt) {
+      auto plan_root = plan_roots.find(plan_root_key);
+      ptrs.push_back(&plan_root->second);
+    }
+  }
+  return ptrs;
 };
 
