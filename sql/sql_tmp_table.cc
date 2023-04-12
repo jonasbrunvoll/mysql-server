@@ -2440,15 +2440,28 @@ void close_tmp_table(TABLE *table) {
   filesort_free_buffers(table, true);
 
   if (table->is_created()) {
-    if (--share->tmp_open_count > 0) {
-      table->file->ha_close();
-    } else  // no more open 'handler' objects
-      table->file->ha_drop_table(table->s->table_name.str);
-    table->set_deleted();
+    if (!current_thd->plan_cache.is_executing_prep_stmt()){
+      if (--share->tmp_open_count > 0) {
+        table->file->ha_close();
+      } else {
+        // no more open 'handler' objects
+        table->file->ha_drop_table(table->s->table_name.str);
+      } 
+      table->set_deleted();
+    } 
+    /*
+    else {
+      --share->tmp_open_count;
+       table->file->ha_close();
+    }
+    */
   }
 
-  destroy(table->file);
-  table->file = nullptr;
+  if (!current_thd->plan_cache.is_executing_prep_stmt()){
+    destroy(table->file);
+    table->file = nullptr;
+  }
+  
 
   if (--share->tmp_handler_count == 0 && share->db_plugin != nullptr) {
     plugin_unlock(nullptr, share->db_plugin);

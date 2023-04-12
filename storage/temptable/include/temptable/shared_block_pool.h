@@ -139,6 +139,13 @@ class Lock_free_shared_block_pool {
         } else if (block.type() == Source::MMAP_FILE) {
           MemoryMonitor::MMAP::decrease(block.size());
         }
+
+        /*
+          Jonas - Testing if it is possible to run tests
+          without cleaning up blocks when client exits 
+          session and THD releases resources.  
+        */ 
+        //block.destroy();
         block.destroy();
       }
       m_slot.store(slot_idx, FREE_SLOT);

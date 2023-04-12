@@ -7912,8 +7912,10 @@ int handler::ha_write_row(uchar *buf) {
 
   if (unlikely(error)) return error;
 
-  if (unlikely((error = binlog_log_row(table, nullptr, buf, log_func))))
-    return error; /* purecov: inspected */
+  if (!current_thd->plan_cache.is_executing_prep_stmt()){
+    if (unlikely((error = binlog_log_row(table, nullptr, buf, log_func))))
+      return error; /* purecov: inspected */
+  }
 
   DEBUG_SYNC_C("ha_write_row_end");
   return 0;

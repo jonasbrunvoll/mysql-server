@@ -762,13 +762,12 @@ bool optimize_secondary_engine(THD *thd) {
 bool Sql_cmd_dml::execute_inner(THD *thd) {
   Query_expression *unit = lex->unit;
 
-  bool isPrepared = false;
+  bool prepared_statment = false;
   std::clock_t start_exec = std::clock();
   std::clock_t start_opt = std::clock();
   // Chech is query is a prepard statment. 
   if (thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
 
-    isPrepared = true;
     // Switch to plan roots mem_guard. 
     PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_ptr_active_plan_root();
     Swap_mem_root_guard mem_root_guard{thd, &ptr_plan_root->mem_root};
@@ -777,8 +776,12 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
       return true;
     }
 
-    // Flag plan_root as optimized in the plan_cache. 
+    // Ensure that the plan_root is flaged as optimized. 
+    if (!thd->plan_cache.plan_root_is_optimized()){
       thd->plan_cache.set_optimized_status_plan_root(true);
+    }
+
+    prepared_statment = true;
 
   } else {
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
@@ -793,7 +796,8 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   // Perform secondary engine optimizations, if needed.
   if (optimize_secondary_engine(thd)) return true;
 
-  std::clock_t dur_opt = std::clock() - start_opt;
+  // Stop timer eptimization.
+  std::clock_t duration_opt = std::clock() - start_opt;
   
   // We know by now that execution will complete (successful or with error)
   lex->set_exec_completed();
@@ -802,15 +806,13 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   } else {
     if (unit->execute(thd)) return true;
   }
-  std::clock_t dur_exec = std::clock() - start_exec;
 
-  // Cast to ms
-  dur_opt = dur_opt / (double)(CLOCKS_PER_SEC / 1000);
-  dur_exec = dur_exec / (double)(CLOCKS_PER_SEC / 1000);
+  // Stop timer execution.
+  std::clock_t duration_exec = std::clock() - start_exec;
 
+  // Write experiment results to log.
+  thd->plan_cache.log_results(duration_opt, duration_exec, prepared_statment, thd->query().str);
   
- 
-  std::cerr <<  "Is prepared statment: " << isPrepared << " dur_opt: " << dur_opt << "ms. dur_exec: " << dur_exec << "ms." << std::endl;
   return false;
 }
 
@@ -1584,7 +1586,9 @@ static void destroy_sj_tmp_tables(JOIN *join) {
       table->file->ha_index_or_rnd_end();
     }
     close_tmp_table(table);
-    free_tmp_table(table);
+    if (!current_thd->plan_cache.is_executing_prep_stmt()){
+      free_tmp_table(table);
+    }
   }
   join->sj_tmp_tables.clear();
 }
@@ -3365,10 +3369,14 @@ void QEP_TAB::cleanup() {
     if (t != nullptr)  // Check tmp table is not yet freed.
     {
       close_tmp_table(t);
-      free_tmp_table(t);
+      if (!current_thd->plan_cache.is_executing_prep_stmt()){
+        free_tmp_table(t);
+      }
     }
-    destroy(tmp_table_param);
-    tmp_table_param = nullptr;
+    if (!current_thd->plan_cache.is_executing_prep_stmt()){
+      destroy(tmp_table_param);
+      tmp_table_param = nullptr;
+    }
   }
   if (table_ref != nullptr && table_ref->uses_materialization()) {
     assert(t == table_ref->table);

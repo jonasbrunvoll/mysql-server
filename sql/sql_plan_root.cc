@@ -40,17 +40,6 @@ std::vector<stmt_param> PLAN_ROOT::get_param_set(){
     return param_set;
 };
 
-void PLAN_ROOT::increment_entries(){
-    entries_counter++;
-};
-
-void PLAN_ROOT::set_entries(int _entries){
-    entries_counter = _entries;
-};
-
-int PLAN_ROOT::get_entries(){
-    return entries_counter;
-};
 
 unsigned int PLAN_ROOT::get_timestamp_created(){
     return timestamp_created;
@@ -68,6 +57,17 @@ void PLAN_ROOT::set_timestamp_last_used(){
     timestamp_last_used = get_timestamp_current_time();
 }
 
+/*
+
+void PLAN_ROOT::add_ptr_temp_table(TABLE* _ptr_temp_table){
+
+};
+
+void PLAN_ROOT::cleanup_temp_table_ptrs(){
+
+};
+
+*/
 // PRIVATE FUNCTIONS //
 unsigned int PLAN_ROOT::get_timestamp_current_time(){
     const auto p = std::chrono::system_clock::now();

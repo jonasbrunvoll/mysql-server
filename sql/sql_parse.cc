@@ -4902,7 +4902,7 @@ finish:
       thd->reset_query_for_display();
     }
   }
-
+  
   lex->cleanup(true);
 
   /* Free tables */
@@ -5369,6 +5369,7 @@ void dispatch_sql_command(THD *thd, Parser_state *parser_state) {
   // Clear key to plan_root before next execution.
   thd->plan_cache.clear_key_active_plan_root();  
 
+  
   assert(thd->change_list.is_empty());
 
   DEBUG_SYNC(thd, "query_rewritten");

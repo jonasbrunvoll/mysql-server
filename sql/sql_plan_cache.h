@@ -95,6 +95,14 @@ class PLAN_CACHE {
     PLAN_ROOT* get_ptr_active_plan_root();
     Prepared_statement* get_ptr_prep_stmt();
 
+    // Writing results to log file. 
+    void log_results(
+        std::clock_t _duration_opt, 
+        std::clock_t _duration_exec, 
+        bool prepared_statment, 
+        std::string _query_string
+    );
+
 private:    
     void global_replacement(
         std::string _replacement_logic, 
@@ -122,26 +130,12 @@ private:
         std::vector <stmt_param> _s1, 
         std::vector <stmt_param> _s2);
 
-    unsigned int num_plan_root_entries(
-        Prepared_statement* _ptr_prep_stmt
-    );
-
-    
-    void rewrite_version_numbers(
-        int _start, 
-        int _versions, 
-        Prepared_statement* _ptr_prep_stmt  
-    );
 
     PLAN_ROOT* get_ptr_plan_root(
         plan_root_key _key
     );
 
     std::vector<plan_root_key> get_version_keys(
-        Prepared_statement* _ptr_prep_stmt
-    );
-    
-    std::vector<PLAN_ROOT*> get_version_ptrs(
         Prepared_statement* _ptr_prep_stmt
     );
 };

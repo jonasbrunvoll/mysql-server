@@ -1008,7 +1008,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
   }
   // Entry point to plan cache.
   // _match_logic, _entry_logic, _replacement_logic, _ptr_prep_stmt, _param_set
-  thd->plan_cache.entry("EXACT_MATCH", "N_ENTRIES", "FIFO", stmt, plan_root_params);
+  thd->plan_cache.entry("UNDEFINED", "N_ENTRIES", "WORST_MATCH", stmt, plan_root_params);
 
   // Copy part of query string after last parameter marker
   if (m_with_log && query->append(m_query_string.str + length,
