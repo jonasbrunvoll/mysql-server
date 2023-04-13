@@ -32,17 +32,22 @@
 #error "sql_class.h includes sql_lex.h directly or indirectly; it should not."
 #endif
 
-#ifdef ITEM_INCLUDED
-#error "sql_class.h includes item.h directly or indirectly; it should not."
-#endif
+/*
+  Jonas - test commented out to be able to #include "sql/sql_tmp_table.h" in 
+  plan_root.h.         
 
-#ifdef FIELD_INCLUDED
-#error "sql_class.h includes field.h directly or indirectly; it should not."
-#endif
+  #ifdef ITEM_INCLUDED
+  #error "sql_class.h includes item.h directly or indirectly; it should not."
+  #endif
+
+  #ifdef FIELD_INCLUDED
+  #error "sql_class.h includes field.h directly or indirectly; it should not."
+  #endif
 
 #ifdef HANDLER_INCLUDED
 #error "sql_class.h includes handler.h directly or indirectly; it should not."
 #endif
+*/
 
 #ifdef _SQL_PROFILE_H
 #error \

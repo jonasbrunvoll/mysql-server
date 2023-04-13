@@ -57,17 +57,27 @@ void PLAN_ROOT::set_timestamp_last_used(){
     timestamp_last_used = get_timestamp_current_time();
 }
 
-/*
 
 void PLAN_ROOT::add_ptr_temp_table(TABLE* _ptr_temp_table){
-
+    temp_table_ptrs.push_back(_ptr_temp_table);
 };
 
 void PLAN_ROOT::cleanup_temp_table_ptrs(){
-
+    for (auto &ptr_table: temp_table_ptrs){
+        if (--ptr_table->s->tmp_open_count > 0) {
+            ptr_table->file->ha_close();
+        } else {
+            // no more open 'handler' objects
+            ptr_table->file->ha_drop_table(ptr_table->s->table_name.str);
+            ptr_table->set_deleted();   
+        } 
+        //ptr_table->file->ha_close();
+        //ptr_table->file->ha_drop_table(ptr_table->s->table_name.str);
+    }
+    std::cout << "Hi from PLAN_ROOT::cleanup_temp_table_ptrs()\n" << std::endl;
 };
 
-*/
+
 // PRIVATE FUNCTIONS //
 unsigned int PLAN_ROOT::get_timestamp_current_time(){
     const auto p = std::chrono::system_clock::now();

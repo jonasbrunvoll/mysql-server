@@ -2448,13 +2448,20 @@ void close_tmp_table(TABLE *table) {
         table->file->ha_drop_table(table->s->table_name.str);
       } 
       table->set_deleted();
-    } 
-    /*
-    else {
+    } else {
+      /*
       --share->tmp_open_count;
        table->file->ha_close();
+      */
+     /*
+      Add *table to active plan_root object for cleanup. Due to the plan_cache 
+      logic, this is necessary as the temp_tables generated during execution of 
+      prepared statmenst are not released. The cleanup of temp tables must therefore 
+      be done when releasing the plan root boject from the plan cache.
+     */ 
+     current_thd->plan_cache.get_ptr_active_plan_root()->add_ptr_temp_table(table);
     }
-    */
+    
   }
 
   if (!current_thd->plan_cache.is_executing_prep_stmt()){

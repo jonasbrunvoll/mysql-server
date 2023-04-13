@@ -80,6 +80,8 @@ class PLAN_CACHE {
         Prepared_statement* _ptr_prep_stmt
     );
 
+    void cleanup_tmp_tables();
+
     void set_optimized_status_plan_root(
         bool _status
     );
@@ -137,6 +139,10 @@ private:
 
     std::vector<plan_root_key> get_version_keys(
         Prepared_statement* _ptr_prep_stmt
+    );
+
+    void erase_plan_root(
+        plan_root_key _key_plan_root
     );
 };
 #endif /* SQL_PLAN_CACHE_INCLUDED */

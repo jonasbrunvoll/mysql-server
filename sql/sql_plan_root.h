@@ -37,9 +37,12 @@ class PLAN_ROOT {
             set_timestamp_created();
             set_timestamp_last_used();
         }
-        ~PLAN_ROOT(){}
-        PLAN_ROOT(PLAN_ROOT &&) = default;
-        PLAN_ROOT(const PLAN_ROOT &) = delete;
+        //~PLAN_ROOT(){
+        //    cleanup_temp_table_ptrs();
+        //    std::cout << "Hi from PLAN_ROOT destructor '~PLAN_ROOT()'\n" << std::endl;
+        //}
+        //PLAN_ROOT(PLAN_ROOT &&) = default;
+        //PLAN_ROOT(const PLAN_ROOT &) = delete;
         MEM_ROOT mem_root;
         bool get_optimized_status();
         void set_optimized_status(bool _status);

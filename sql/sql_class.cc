@@ -1361,6 +1361,9 @@ void THD::release_resources() {
   if (!is_cleanup_done()) cleanup();
 
   mdl_context.destroy();
+
+  plan_cache.cleanup_tmp_tables();
+
   ha_close_connection(this);
 
   /*

@@ -73,7 +73,7 @@ void PLAN_CACHE::entry(
       // Fetch versions
       std::vector<plan_root_key> version_keys = get_version_keys(_ptr_prep_stmt);
 
-      for (auto &key: version_keys){
+      for (auto const &key: version_keys){
         auto plan_root = plan_roots.find(key);
         if (plan_root == plan_roots.end()) break;
         std::vector<stmt_param> param_set = plan_root->second.get_param_set();
@@ -118,7 +118,7 @@ void PLAN_CACHE::version_replacement(
         plan_root_key curr_key;
         unsigned int timestamp = INT_MAX;
 
-        for (auto &key: _version_keys){
+        for (auto const &key: _version_keys){
           auto plan_root = plan_roots.find(key);
           if (plan_root == plan_roots.end()) break;
           curr_key = plan_root->first;
@@ -128,7 +128,8 @@ void PLAN_CACHE::version_replacement(
         }
 
         // Erase the first version from plan_roots.
-        plan_roots.erase(curr_key);
+        erase_plan_root(curr_key);
+        //plan_roots.erase(curr_key);
 
         // Add new version to plan_roots. 
         key_active_plan_root = curr_key;
@@ -139,7 +140,7 @@ void PLAN_CACHE::version_replacement(
         plan_root_key curr_key;
         unsigned int timestamp = 0;
 
-        for (auto &key: _version_keys){
+        for (auto const &key: _version_keys){
           auto plan_root = plan_roots.find(key);
           if (plan_root == plan_roots.end()) break;
           curr_key = plan_root->first;
@@ -149,7 +150,8 @@ void PLAN_CACHE::version_replacement(
         }
 
         // Erase the first version from plan_roots.
-        plan_roots.erase(curr_key);
+        erase_plan_root(curr_key);
+        //plan_roots.erase(curr_key);
 
         // Add new version to plan_roots. 
         key_active_plan_root = curr_key;
@@ -165,7 +167,7 @@ void PLAN_CACHE::version_replacement(
         plan_root_key curr_key;
         unsigned int timestamp = INT_MAX;
 
-        for (auto &key: _version_keys){
+        for (auto const &key: _version_keys){
           auto plan_root = plan_roots.find(key);
           if (plan_root == plan_roots.end()) break;
           curr_key = plan_root->first;
@@ -174,8 +176,9 @@ void PLAN_CACHE::version_replacement(
           }
         }
 
-        // Remove least recently used plan_root version. 
-        plan_roots.erase(curr_key);
+        // Remove least recently used plan_root version.
+        erase_plan_root(curr_key); 
+        //plan_roots.erase(curr_key);
 
         // Add new version to plan_roots. 
         key_active_plan_root = curr_key;
@@ -187,7 +190,7 @@ void PLAN_CACHE::version_replacement(
         plan_root_key current_key;
         unsigned int most_unsimilar_params = 0;
         
-        for (auto &key: _version_keys){
+        for (auto const &key: _version_keys){
           auto plan_root = plan_roots.find(key);
           if (plan_root == plan_roots.end()) break;
           unsigned int counter = 0;
@@ -212,7 +215,8 @@ void PLAN_CACHE::version_replacement(
           }
         }
         // Remove least recently used plan_root version. 
-        plan_roots.erase(current_key);
+        erase_plan_root(current_key);
+        //plan_roots.erase(current_key);
 
         // Add new version to plan_roots. 
         key_active_plan_root = std::make_pair(_ptr_prep_stmt, current_key.second); 
@@ -246,7 +250,8 @@ void PLAN_CACHE::global_replacement(
           }
       }
       // Erase the first plan root in from plan_roots.
-      plan_roots.erase(key);            
+      erase_plan_root(key);
+      //plan_roots.erase(key);            
       break;
     }
     case LILO:{
@@ -259,7 +264,8 @@ void PLAN_CACHE::global_replacement(
           }
       }
        // Erase the last plan root added to plan_roots.
-      plan_roots.erase(key);
+      erase_plan_root(key);
+      //plan_roots.erase(key);
       break;
     }
     case LRU:{
@@ -272,7 +278,8 @@ void PLAN_CACHE::global_replacement(
           }
       }
       // Remove least recently used plan_root. 
-      plan_roots.erase(key);    
+      erase_plan_root(key);
+      //plan_roots.erase(key);    
       break;
     } 
     case WORST_MATCH:{
@@ -312,8 +319,9 @@ void PLAN_CACHE::global_replacement(
             } 
           }
         }
-        // Remove least recently used plan_root version. 
-        plan_roots.erase(current_key);
+        // Remove least recently used plan_root version.
+        erase_plan_root(current_key); 
+        //plan_roots.erase(current_key);
 
         // Add new version to plan_roots. 
         key_active_plan_root = std::make_pair(_ptr_prep_stmt, current_key.second); 
@@ -346,7 +354,8 @@ void PLAN_CACHE::global_replacement(
           } 
         }
         // Remove least recently used plan_root version. 
-        plan_roots.erase(current_key);
+        erase_plan_root(current_key);
+        //plan_roots.erase(current_key);
         
         // Add new version to plan_roots. 
         key_active_plan_root = std::make_pair(_ptr_prep_stmt, 1);
@@ -355,8 +364,6 @@ void PLAN_CACHE::global_replacement(
       break;
     }
       default:{
-        // Erase the last plan root added to plan_roots.
-        plan_roots.erase(plan_roots.end());
         break;
       }
     }
@@ -391,6 +398,10 @@ void PLAN_CACHE::cleanup_plan_root(THD* thd, Prepared_statement* _ptr_prep_stmt)
     auto key = it->first;
     auto current = it++;
     if (key.first == _ptr_prep_stmt) {
+        // Clenup temp_tabls
+        get_ptr_plan_root(key)->cleanup_temp_table_ptrs();
+
+        
         // Remove plan_root item from plan_roots
         it = plan_roots.erase(current);
     } 
@@ -491,4 +502,26 @@ std::vector<plan_root_key> PLAN_CACHE::get_version_keys(Prepared_statement* _ptr
     }
   }
   return versions;
+};
+
+
+void PLAN_CACHE::erase_plan_root(plan_root_key _key_plan_root){
+  get_ptr_plan_root(_key_plan_root)->cleanup_temp_table_ptrs();
+  plan_roots.erase(_key_plan_root);
+};
+
+/*
+  Clean up all temp tables generated through executiopn
+  of all plan root objects.  
+*/
+void PLAN_CACHE::cleanup_tmp_tables(){
+
+  if (plan_roots.empty()) return;
+
+  for(auto const& plan_root : plan_roots){
+    get_ptr_plan_root(plan_root.first)->cleanup_temp_table_ptrs();
+  }
+
+  
+  plan_roots.clear();  
 };
