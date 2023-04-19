@@ -8,8 +8,9 @@
 #include <utility>
 
 #include "sql_class.h"                        // THD
-#include "include/my_alloc.h"                 // MEM_ROOT
 #include "sql_plan_root.h"                    // PLAN_ROOT
+#include "include/my_alloc.h"                 // MEM_ROOT
+#include "include/field_types.h"              // Enum_field_types
 
 class AccessPath;
 class Prepared_statment;
@@ -72,7 +73,7 @@ class PLAN_CACHE {
         std::string _entry_logic,
         std::string _replacement_logic, 
         Prepared_statement* _ptr_prep_stmt, 
-        std::vector<stmt_param> _param_set
+        std::vector<prepared_statement_parameter> _param_set
     );
 
     void cleanup_plan_root(
@@ -97,6 +98,12 @@ class PLAN_CACHE {
     PLAN_ROOT* get_ptr_active_plan_root();
     Prepared_statement* get_ptr_prep_stmt();
 
+    
+    std::string format_if_varchar_parameter(
+        enum_field_types _field_type,
+        std::string _parameter
+    );
+    
     // Writing results to log file. 
     void log_results(
         std::clock_t _duration_opt, 
@@ -109,14 +116,14 @@ private:
     void global_replacement(
         std::string _replacement_logic, 
         Prepared_statement* _ptr_prep_stmt, 
-        std::vector<stmt_param> _param_set,
+        std::vector<prepared_statement_parameter> _param_set,
         std::vector<plan_root_key> _versions
     );
 
     void version_replacement(
         std::string _replacement_logic,
         Prepared_statement* _ptr_prep_stmt, 
-        std::vector<stmt_param> _param_set,
+        std::vector<prepared_statement_parameter> _param_set,
         std::vector<plan_root_key> _versions
     );
 
@@ -125,12 +132,12 @@ private:
     );
 
     bool add_plan_root(
-        std::vector<stmt_param> _param_set
+        std::vector<prepared_statement_parameter> _param_set
     );
 
     bool exact_match(
-        std::vector <stmt_param> _s1, 
-        std::vector <stmt_param> _s2);
+        std::vector <prepared_statement_parameter> _s1, 
+        std::vector <prepared_statement_parameter> _s2);
 
 
     PLAN_ROOT* get_ptr_plan_root(

@@ -17,41 +17,48 @@
 class AccessPath;
 class Query_block;
 
-// Save before refactoring of variable name and variables.
-
-struct stmt_param {
+struct prepared_statement_parameter {
     std::string varname;
     std::string val;
     int param_type;
 };
 
 class PLAN_ROOT {
+    // Attributes  
+    bool optimized = false;
+    std::map<Query_block*, AccessPath*> access_path_pointers;
+    std::vector <prepared_statement_parameter> parameters;
+    std::vector <TABLE*> temp_table_pointers; 
     unsigned int timestamp_created;
-    unsigned int timestamp_last_used; 
-    bool optimized_status = false;
-    std::vector <stmt_param> param_set;
-    std::map<Query_block*, AccessPath*> access_paths;
-    std::vector <TABLE*> temp_table_ptrs; 
+    unsigned int timestamp_last_accessed; 
+    
     public:
-        PLAN_ROOT(std::vector<stmt_param> _param_set) {
-            param_set = _param_set;
+        PLAN_ROOT(std::vector<prepared_statement_parameter> _parameters) {
+            parameters = _parameters;
             set_timestamp_created();
-            set_timestamp_last_used();
+            set_timestamp_last_accessed();
         }
+        
         MEM_ROOT mem_root;
-        bool get_optimized_status();
-        void set_optimized_status(bool _status);
-        std::vector<stmt_param> get_param_set();
-        void set_param_set(std::vector<stmt_param> _param_set);
-        bool set_access_path(Query_block* _query_block, AccessPath* _access_path);
-        void clear_access_paths();
+ 
+        void set_optimized_status(bool _optimized_status);
+        bool is_optimized();
+        
+        bool append_access_path_pointer(Query_block* _query_block, AccessPath* _access_path);
+        void clear_access_path_pointers();
+        
+        void set_parameters(std::vector<prepared_statement_parameter> _parameters);
+        std::vector<prepared_statement_parameter> get_parameters();
+        
+        void append_temp_table_pointer(TABLE* _temp_table);
+        void free_temp_tables();
+        
         void set_timestamp_created();
-        void set_timestamp_last_used();
+        void set_timestamp_last_accessed();
         unsigned int get_timestamp_created();
-        unsigned int get_timestamp_last_used();
-        void add_ptr_temp_table(TABLE* _ptr_temp_table);
-        void cleanup_temp_table_ptrs();
+        unsigned int get_timestamp_last_accessed();
+    
     private:
-        unsigned int get_timestamp_current_time();
+        unsigned int get_current_timestamp();
 };
 #endif /* SQL_PLAN_ROOT_INCLUDED */

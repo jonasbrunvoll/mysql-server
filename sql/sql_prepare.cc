@@ -950,7 +950,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
   Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
   
   // Init empty param set. 
-  std::vector<stmt_param> plan_root_params;
+  std::vector<prepared_statement_parameter> parameters_prepared_statement;
   
       
   for (Item_param **it = m_param_array; it < end; ++it) {
@@ -972,6 +972,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
       if (val == nullptr) goto error;
       
 
+      // Move logic to PLAN_CACHE?
       std::string val_string = val->ptr();
       // If data_type is varchar, get rid of all char except the string value between ' '.
       if (param->data_type() == 15){
@@ -980,8 +981,8 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
           val_string = val_string.substr(first,last-first+1);
       }
 
-      // Add parameter to param set. 
-      plan_root_params.push_back(stmt_param{varname->str, val_string, param->data_type()});
+      // Append parameter to parameters_prepared_statement. 
+      parameters_prepared_statement.push_back(prepared_statement_parameter{varname->str, val_string, param->data_type()});
 
       if (param->convert_value()) goto error;
 
@@ -1006,9 +1007,9 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
     }
     param->sync_clones();
   }
-  // Entry point to plan cache.
-  // _match_logic, _entry_logic, _replacement_logic, _ptr_prep_stmt, _param_set
-  thd->plan_cache.entry("UNDEFINED", "N_ENTRIES", "WORST_MATCH", stmt, plan_root_params);
+  
+  // Entry point plan cache.
+  thd->plan_cache.entry("UNDEFINED", "N_ENTRIES", "WORST_MATCH", stmt, parameters_prepared_statement);
 
   // Copy part of query string after last parameter marker
   if (m_with_log && query->append(m_query_string.str + length,

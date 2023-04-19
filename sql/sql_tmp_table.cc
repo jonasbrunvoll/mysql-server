@@ -2459,7 +2459,7 @@ void close_tmp_table(TABLE *table) {
       prepared statmenst are not released. The cleanup of temp tables must therefore 
       be done when releasing the plan root boject from the plan cache.
      */ 
-     current_thd->plan_cache.get_ptr_active_plan_root()->add_ptr_temp_table(table);
+     current_thd->plan_cache.get_ptr_active_plan_root()->append_temp_table_pointer(table);
     }
     
   }
