@@ -766,10 +766,10 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   std::clock_t start_exec = std::clock();
   std::clock_t start_opt = std::clock();
   // Chech is query is a prepard statment. 
-  if (thd->plan_cache.get_ptr_prep_stmt() != nullptr) {
+  if (thd->plan_cache.executes_prepared_statment()) {
 
     // Switch to plan roots mem_guard. 
-    PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_ptr_active_plan_root();
+    PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_active_plan_root();
     Swap_mem_root_guard mem_root_guard{thd, &ptr_plan_root->mem_root};
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
                      /*create_iterators=*/true, /*finalize_access_paths=*/true)){
@@ -810,8 +810,8 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   // Stop timer execution.
   std::clock_t duration_exec = std::clock() - start_exec;
 
-  // Write experiment results to log.
-  thd->plan_cache.log_results(duration_opt, duration_exec, prepared_statment, thd->query().str);
+  // Write time consumtion to log file.
+  thd->plan_cache.log_time_consumption(duration_opt, duration_exec, prepared_statment, thd->query().str);
   
   return false;
 }
@@ -1586,7 +1586,7 @@ static void destroy_sj_tmp_tables(JOIN *join) {
       table->file->ha_index_or_rnd_end();
     }
     close_tmp_table(table);
-    if (!current_thd->plan_cache.is_executing_prep_stmt()){
+    if (!current_thd->plan_cache.executes_prepared_statment()){
       free_tmp_table(table);
     }
   }
@@ -3369,11 +3369,11 @@ void QEP_TAB::cleanup() {
     if (t != nullptr)  // Check tmp table is not yet freed.
     {
       close_tmp_table(t);
-      if (!current_thd->plan_cache.is_executing_prep_stmt()){
+      if (!current_thd->plan_cache.executes_prepared_statment()){
         free_tmp_table(t);
       }
     }
-    if (!current_thd->plan_cache.is_executing_prep_stmt()){
+    if (!current_thd->plan_cache.executes_prepared_statment()){
       destroy(tmp_table_param);
       tmp_table_param = nullptr;
     }

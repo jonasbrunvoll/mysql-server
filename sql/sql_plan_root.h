@@ -44,13 +44,13 @@ class PLAN_ROOT {
         void set_optimized_status(bool _optimized_status);
         bool is_optimized();
         
-        bool append_access_path_pointer(Query_block* _query_block, AccessPath* _access_path);
-        void clear_access_path_pointers();
+        bool add_access_path(Query_block* _query_block, AccessPath* _access_path);
+        void clear_access_paths();
         
         void set_parameters(std::vector<prepared_statement_parameter> _parameters);
         std::vector<prepared_statement_parameter> get_parameters();
         
-        void append_temp_table_pointer(TABLE* _temp_table);
+        void append_temp_table(TABLE* _temp_table);
         void free_temp_tables();
         
         void set_timestamp_created();

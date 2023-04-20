@@ -944,14 +944,12 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
   // Protects thd->user_vars
   mysql_mutex_lock(&thd->LOCK_thd_data);
 
-  // Find *stmt. I needed as part of key-pair in plan cache. 
+  // Find *stmt. 
   LEX *lex = thd->lex;
   const LEX_CSTRING &name = lex->prepared_stmt_name;
   Prepared_statement *stmt = thd->stmt_map.find_by_name(name);
   
-  // Init empty param set. 
   std::vector<prepared_statement_parameter> parameters_prepared_statement;
-  
       
   for (Item_param **it = m_param_array; it < end; ++it) {
     Item_param *const param = *it;
@@ -974,7 +972,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
       // Append parameter to parameters_prepared_statement. 
       parameters_prepared_statement.push_back(prepared_statement_parameter{
         varname->str, 
-        thd->plan_cache.format_if_varchar_parameter(param->data_type(), val->ptr()),
+        thd->plan_cache.format_varchar(param->data_type(), val->ptr()),
         param->data_type()
       });
 
@@ -1002,8 +1000,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
     param->sync_clones();
   }
   
-  // Entry point plan cache.
-  thd->plan_cache.entry("UNDEFINED", "N_ENTRIES", "WORST_MATCH", stmt, parameters_prepared_statement);
+  thd->plan_cache.enter_plan_cache("UNDEFINED", "N_ENTRIES", "WORST_MATCH", stmt, parameters_prepared_statement);
 
   // Copy part of query string after last parameter marker
   if (m_with_log && query->append(m_query_string.str + length,
@@ -1810,11 +1807,8 @@ void mysql_sql_stmt_prepare(THD *thd) {
       If there is a statement with the same name, remove it. It is ok to
       remove old and fail to insert a new one at the same time.
     */
-
-    // Run cleanup to prepare new statement with *stmt as key value. 
-    thd->plan_cache.cleanup_plan_root(thd, stmt);     
+    thd->plan_cache.remove_plan_root(thd, stmt);     
   
-
     if (stmt->is_in_use()) {
       my_error(ER_PS_NO_RECURSION, MYF(0));
       return;

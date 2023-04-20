@@ -5366,10 +5366,9 @@ void dispatch_sql_command(THD *thd, Parser_state *parser_state) {
   thd->end_statement();
   thd->cleanup_after_query();
 
-  // Clear key to plan_root before next execution.
-  thd->plan_cache.clear_key_active_plan_root();  
+  // Prepare plan_chace to the next query execution.
+  thd->plan_cache.clear_active_plan_root_key();  
 
-  
   assert(thd->change_list.is_empty());
 
   DEBUG_SYNC(thd, "query_rewritten");

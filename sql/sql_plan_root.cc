@@ -16,17 +16,17 @@ bool PLAN_ROOT::is_optimized(){
     return optimized;
 };
 
-bool PLAN_ROOT::append_access_path_pointer(Query_block* _query_block, AccessPath* _access_path){
+bool PLAN_ROOT::add_access_path(Query_block* _query_block, AccessPath* _access_path){
     auto it = access_path_pointers.emplace(_query_block, _access_path);
     if (!it.second) return true;
     return false;
 };
 
-void PLAN_ROOT::clear_access_path_pointers(){
+void PLAN_ROOT::clear_access_paths(){
     access_path_pointers.clear();
 };
 
-void PLAN_ROOT::append_temp_table_pointer(TABLE* _temp_table){
+void PLAN_ROOT::append_temp_table(TABLE* _temp_table){
     temp_table_pointers.push_back(_temp_table);
 };
 

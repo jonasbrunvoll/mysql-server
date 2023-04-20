@@ -1362,7 +1362,7 @@ void THD::release_resources() {
 
   mdl_context.destroy();
 
-  plan_cache.cleanup_tmp_tables();
+  plan_cache.free_all_tmp_tables();
 
   ha_close_connection(this);
 
@@ -1804,7 +1804,7 @@ void THD::cleanup_after_query() {
     If a prepard statment, free items() is not executed. 
   */ 
   cleanup_items(item_list());
-  if (!plan_cache.is_executing_prep_stmt()){
+  if (!plan_cache.executes_prepared_statment()){
     free_items();
   }
     

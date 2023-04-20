@@ -1430,8 +1430,8 @@ void Query_expression::create_access_paths(THD *thd) {
     assert(join && join->is_optimized());
     m_root_access_path = join->root_access_path();
 
-    // Return if query is not an prepared stmt.    
-    if (thd->plan_cache.get_ptr_prep_stmt() == nullptr) return;
+    // Return if query being executed is not an prepared statment.    
+    if (!thd->plan_cache.executes_prepared_statment()) return;
     
     // Set access_path(s) to query. 
     thd->plan_cache.set_access_path_plan_root(join->query_block, m_root_access_path);
