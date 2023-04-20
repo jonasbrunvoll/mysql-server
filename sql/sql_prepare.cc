@@ -971,18 +971,12 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
       const String *val = param->query_val_str(thd, &buf);
       if (val == nullptr) goto error;
       
-
-      // Move logic to PLAN_CACHE?
-      std::string val_string = val->ptr();
-      // If data_type is varchar, get rid of all char except the string value between ' '.
-      if (param->data_type() == 15){
-          unsigned first = val_string.find("'");
-          unsigned last = val_string.find_last_of("'");
-          val_string = val_string.substr(first,last-first+1);
-      }
-
       // Append parameter to parameters_prepared_statement. 
-      parameters_prepared_statement.push_back(prepared_statement_parameter{varname->str, val_string, param->data_type()});
+      parameters_prepared_statement.push_back(prepared_statement_parameter{
+        varname->str, 
+        thd->plan_cache.format_if_varchar_parameter(param->data_type(), val->ptr()),
+        param->data_type()
+      });
 
       if (param->convert_value()) goto error;
 

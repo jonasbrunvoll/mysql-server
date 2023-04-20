@@ -457,8 +457,8 @@ std::string PLAN_CACHE::format_if_varchar_parameter(enum_field_types _field_type
   unsigned index_first_occurance = _parameter.find("'");
   unsigned index_last_occurance = _parameter.find_last_of("'");
   return _parameter.substr(
-    index_first_occurance,
-    index_last_occurance-index_first_occurance+1
+    index_first_occurance + 1,
+    index_last_occurance-1-index_first_occurance
   );
 }
 
