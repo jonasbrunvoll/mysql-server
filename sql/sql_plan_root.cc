@@ -5,7 +5,7 @@
 #include "sql/sql_plan_root.h"
 #include "sql/join_optimizer/access_path.h"   // AccessPath
 #include "sql/sql_lex.h"                      // Query_block
- 
+                         
 
 void PLAN_ROOT::set_optimized_status(bool _optimized_status){
     optimized = _optimized_status;
@@ -38,6 +38,9 @@ void PLAN_ROOT::free_temp_tables(){
             temp_table->file->ha_drop_table(temp_table->s->table_name.str);
             temp_table->set_deleted();   
         } 
+        destroy(temp_table->file);
+        temp_table->file = nullptr;
+        free_tmp_table(temp_table);
     }
     temp_table_pointers.clear();
 };

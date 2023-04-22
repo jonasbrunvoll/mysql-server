@@ -313,10 +313,10 @@ void PLAN_CACHE::global_replacement(
       } else {
         // Compare _param_set against each param set in param sets.    
         plan_root_key plan_root_key;
-        unsigned int most_unsimilar_params = 0;
+        int most_unsimilar_params = -1;
         
         for (auto &plan_root: plan_roots){
-          unsigned int counter = 0;
+          int counter = 0;
           std::vector<prepared_statement_parameter> fetched_param_set = plan_root.second.get_parameters();
 
           if (_parameters.size() != fetched_param_set.size()) {
@@ -446,13 +446,14 @@ void PLAN_CACHE::log_time_consumption(
   std::clock_t _duration_exec, 
   bool _prepared_statment, 
   std::string _query_string){
-
-  const char *path="/home/jonas/mysql/experiments/log.text";
+  
+  const char *path="/home/jonas/mysql/experiments/log.txt";
   std::ofstream logFile;
   logFile.open(path, std::ios_base::app);
-  logFile << _duration_opt << "," << _duration_exec << "," << _prepared_statment << "," << _query_string << std::endl;
-  std::cout << _duration_opt << "," << _duration_exec << "," << _prepared_statment << "," << _query_string << std::endl;
-  //std::cerr <<  "Is prepared statment: " << isPrepared << " dur_opt: " << dur_opt << "ms. dur_exec: " << dur_exec << "ms." << std::endl;
+
+  double durations_exe_after_opt_ms = (_duration_exec - _duration_opt)/(CLOCKS_PER_SEC/1000);
+  double duration_opt_ms=(_duration_opt)/(CLOCKS_PER_SEC/1000);
+  logFile << duration_opt_ms << "," << durations_exe_after_opt_ms << "," << _prepared_statment << "," << _query_string << std::endl;
 };
 
 bool PLAN_CACHE::add_plan_root(std::vector<prepared_statement_parameter> _parameters){
