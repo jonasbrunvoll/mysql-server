@@ -37,7 +37,7 @@ enum match_logic {
 enum replacement_logic {
     UNDEFINED_RL,
     FIFO,
-    LILO,
+    LIFO,
     LRU,
     WORST_MATCH
 };
@@ -61,7 +61,7 @@ class PLAN_CACHE {
         match_logics["INEXACT_MATCH"] = INEXACT_MATCH;
         replacement_logics["LRU"] = LRU;
         replacement_logics["FIFO"] = FIFO;
-        replacement_logics["LILO"] = LILO;
+        replacement_logics["LIFO"] = LIFO;
         replacement_logics["WORST_MATCH"] = WORST_MATCH;
         active_plan_root_key = std::make_pair(nullptr, 0);
     }

@@ -1326,6 +1326,7 @@ bool do_command(THD *thd) {
     such as COM_QUIT.
   */
   thd->clear_error();  // Clear error message
+
   thd->get_stmt_da()->reset_diagnostics_area();
 
   /*
@@ -2422,6 +2423,12 @@ done:
   thd->update_slow_query_status();
   if (thd->killed) thd->send_kill_message();
   thd->send_statement_status();
+  
+  // Prepare plan_chace to the next query execution.
+  thd->plan_cache.clear_active_plan_root_key();  
+
+
+
 
   /* After sending response, switch to clone protocol */
   if (clone_cmd != nullptr) {
@@ -2985,6 +2992,7 @@ int mysql_execute_command(THD *thd, bool first_level) {
       query_block->get_table_list());
 
   thd->get_stmt_da()->reset_diagnostics_area();
+  
   if ((thd->lex->keep_diagnostics != DA_KEEP_PARSE_ERROR) &&
       (thd->lex->keep_diagnostics != DA_KEEP_DIAGNOSTICS)) {
     /*
@@ -3305,8 +3313,10 @@ int mysql_execute_command(THD *thd, bool first_level) {
     Pre-open temporary tables to simplify privilege checking
     for statements which need this.
   */
-  if (sql_command_flags[lex->sql_command] & CF_PREOPEN_TMP_TABLES) {
-    if (open_temporary_tables(thd, all_tables)) goto error;
+  if(!thd->plan_cache.plan_root_is_optimized()){
+    if (sql_command_flags[lex->sql_command] & CF_PREOPEN_TMP_TABLES) {
+      if (open_temporary_tables(thd, all_tables)) goto error;
+    }
   }
 
   // Save original info for EXPLAIN FOR CONNECTION
@@ -4902,11 +4912,14 @@ finish:
       thd->reset_query_for_display();
     }
   }
-  
-  lex->cleanup(true);
+
+  if (!thd->plan_cache.executes_prepared_statment()){
+    lex->cleanup(true);
+  }
 
   /* Free tables */
   THD_STAGE_INFO(thd, stage_closing_tables);
+
   close_thread_tables(thd);
 
   // Rollback any item transformations made during optimization and execution
@@ -5367,7 +5380,7 @@ void dispatch_sql_command(THD *thd, Parser_state *parser_state) {
   thd->cleanup_after_query();
 
   // Prepare plan_chace to the next query execution.
-  thd->plan_cache.clear_active_plan_root_key();  
+  //thd->plan_cache.clear_active_plan_root_key();  
 
   assert(thd->change_list.is_empty());
 

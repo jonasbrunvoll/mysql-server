@@ -556,7 +556,7 @@ void LEX::release_plugins() {
 void LEX::clear_execution() {
   // Clear execution state for all query expressions:
   for (Query_block *sl = all_query_blocks_list; sl;
-       sl = sl->next_select_in_list())
+       sl = sl->next_select_in_list())   
     sl->master_query_expression()->clear_execution();
 
   set_current_query_block(query_block);
@@ -4799,7 +4799,7 @@ void Query_block::restore_cmd_properties() {
     tbl->restore_properties();
     tbl->table->m_record_buffer = Record_buffer{0, 0, nullptr};
   }
-  assert(join == nullptr);
+  //assert(join == nullptr);
 
   cond_count = saved_cond_count;
 

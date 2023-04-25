@@ -354,6 +354,7 @@ bool sp_lex_instr::reset_lex_and_exec_core(THD *thd, uint *nextp,
   bool error = m_lex->check_preparation_invalid(thd);
 
   m_lex->clear_execution();
+  
 
   /*
     In case a session state exists do not cache the SELECT stmt. If we

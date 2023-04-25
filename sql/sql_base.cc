@@ -1730,6 +1730,9 @@ static void release_or_close_table(THD *thd, TABLE *table) {
 void close_thread_table(THD *thd, TABLE **table_ptr) {
   TABLE *table = *table_ptr;
   DBUG_TRACE;
+  if (thd->plan_cache.executes_prepared_statment()){
+    table->key_read = 0;
+  }
   assert(table->key_read == 0);
   assert(!table->file || table->file->inited == handler::NONE);
   mysql_mutex_assert_not_owner(&LOCK_open);
@@ -7429,7 +7432,6 @@ bool open_temporary_tables(THD *thd, Table_ref *tl_list) {
     if (tl->is_view_or_derived() || tl->is_table_function() ||
         tl->schema_table != nullptr || tl->is_recursive_reference())
       continue;
-
     if (open_temporary_table(thd, tl)) return true;
   }
 

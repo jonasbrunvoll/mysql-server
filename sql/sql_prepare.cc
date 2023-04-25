@@ -2407,7 +2407,9 @@ void Prepared_statement::cleanup_stmt(THD *thd) {
   DBUG_TRACE;
   DBUG_PRINT("enter", ("stmt: %p", this));
 
-  cleanup_items(m_arena.item_list());
+  if (!thd->plan_cache.executes_prepared_statment()){
+    cleanup_items(m_arena.item_list());
+  }
   thd->cleanup_after_query();
 }
 
@@ -3586,9 +3588,9 @@ bool Prepared_statement::execute(THD *thd, String *expanded_query,
   */
   m_lex->keep_diagnostics = DA_KEEP_PARSE_ERROR;
 
-  // Prepare for a new execution
+  // repare for a new execution.
   m_lex->clear_execution();
-
+  
   if (open_cursor) {
     Query_result_send *new_result = nullptr;
     m_lex->safe_to_cache_query = false;

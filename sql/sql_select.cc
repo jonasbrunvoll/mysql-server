@@ -532,6 +532,7 @@ bool Sql_cmd_dml::execute(THD *thd) {
     */
     cleanup(thd);
     if (open_tables_for_query(thd, lex->query_tables, 0)) goto err;
+    
 #ifndef NDEBUG
     if (sql_command_code() == SQLCOM_SELECT)
       DEBUG_SYNC(thd, "after_table_open");
@@ -768,21 +769,21 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   // Chech is query is a prepard statment. 
   if (thd->plan_cache.executes_prepared_statment()) {
 
+    // For logging purposes,
+    prepared_statment = true;
+    
     // Switch to plan roots mem_guard. 
     PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_active_plan_root();
     Swap_mem_root_guard mem_root_guard{thd, &ptr_plan_root->mem_root};
-    if (unit->optimize(thd, /*materialize_destination=*/nullptr,
-                     /*create_iterators=*/true, /*finalize_access_paths=*/true)){
-      return true;
-    }
 
-    // Ensure that the plan_root is flaged as optimized. 
-    if (!thd->plan_cache.plan_root_is_optimized()){
+    //if (!thd->plan_cache.plan_root_is_optimized()) {
+      if (unit->optimize(thd, /*materialize_destination=*/nullptr,
+                      /*create_iterators=*/true, /*finalize_access_paths=*/true)){
+        return true;
+      }
+      // Ensure that the plan_root is flaged as optimized. 
       thd->plan_cache.set_optimized_status_plan_root(true);
-    }
-
-    prepared_statment = true;
-
+    //}
   } else {
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
                      /*create_iterators=*/true, /*finalize_access_paths=*/true)){
@@ -818,8 +819,9 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
 
 bool Sql_cmd_dml::restore_cmd_properties(THD *thd) {
   lex->restore_cmd_properties();
-  bind_fields(thd->stmt_arena->item_list());
-
+  if (!thd->plan_cache.plan_root_is_optimized()){
+    bind_fields(thd->stmt_arena->item_list());
+  }
   return false;
 }
 

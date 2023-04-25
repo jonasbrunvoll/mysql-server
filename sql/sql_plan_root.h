@@ -17,6 +17,7 @@
 class AccessPath;
 class Query_block;
 
+
 struct prepared_statement_parameter {
     std::string varname;
     std::string val;
@@ -40,7 +41,7 @@ class PLAN_ROOT {
         }
         
         MEM_ROOT mem_root;
- 
+
         void set_optimized_status(bool _optimized_status);
         bool is_optimized();
         

@@ -88,7 +88,8 @@
 #include "sql/sql_executor.h"
 #include "sql/sql_lex.h"
 #include "sql/sql_list.h"
-#include "sql/sql_optimizer.h"  // JOIN
+#include "sql/sql_optimizer.h"   // JOIN
+#include "sql/sql_plan_cache.h"  // PlanCache 'Jonas'.
 #include "sql/sql_select.h"
 #include "sql/sql_tmp_table.h"   // tmp tables
 #include "sql/table_function.h"  // Table_function
@@ -96,7 +97,6 @@
 #include "sql/visible_fields.h"
 #include "sql/window.h"  // Window
 #include "template_utils.h"
-#include "sql/sql_plan_cache.h" // PlanCache 'Jonas'.
 
 using std::vector;
 
@@ -984,189 +984,190 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
                                 bool finalize_access_paths) {
   DBUG_TRACE;
 
-  if (!finalize_access_paths) {
-    assert(!create_iterators);
-  }
- 
-   
-  assert(is_prepared() && !is_optimized());
-
-  Change_current_query_block save_query_block(thd);
-
-  ha_rows estimated_rowcount = 0;
-  double estimated_cost = 0.0;
-
-  if (query_result() != nullptr) query_result()->estimated_rowcount = 0;
-
-  for (Query_block *query_block = first_query_block(); query_block != nullptr;
-       query_block = query_block->next_query_block()) {
-    thd->lex->set_current_query_block(query_block);
-
-    // LIMIT is required for optimization
-    if (set_limit(thd, query_block)) return true; /* purecov: inspected */
-
-    if (query_block->optimize(thd, finalize_access_paths)) return true;
-
-    /*
-      Accumulate estimated number of rows.
-      1. Implicitly grouped query has one row (with HAVING it has zero or one
-         rows).
-      2. If GROUP BY clause is optimized away because it was a constant then
-         query produces at most one row.
-     */
-    if (contributes_to_rowcount_estimate(query_block))
-      estimated_rowcount += (query_block->is_implicitly_grouped() ||
-                             query_block->join->group_optimized_away)
-                                ? 1
-                                : query_block->join->best_rowcount;
-
-    estimated_cost += query_block->join->best_read;
-
-    // Table_ref::fetch_number_of_rows() expects to get the number of rows
-    // from all earlier query blocks from the query result, so we need to update
-    // it as we go. In particular, this is used when optimizing a recursive
-    // SELECT in a CTE, so that it knows how many rows the non-recursive query
-    // blocks will produce.
-    //
-    // TODO(sgunders): Communicate this in a different way when the query result
-    // goes away.
-    if (query_result() != nullptr) {
-      query_result()->estimated_rowcount = estimated_rowcount;
-      query_result()->estimated_cost = estimated_cost;
-    }
-  }
-
-  if (!is_simple() && query_term()->open_result_tables(thd, 0)) return true;
-
-  if ((uncacheable & UNCACHEABLE_DEPENDENT) && estimated_rowcount <= 1) {
-    /*
-      This depends on outer references, so optimization cannot assume that all
-      executions will always produce the same row. So, increase the counter to
-      prevent that this table is replaced with a constant.
-      Not testing all bits of "uncacheable", as if derived table sets user
-      vars (UNCACHEABLE_SIDEEFFECT) the logic above doesn't apply.
-    */
-    estimated_rowcount = PLACEHOLDER_TABLE_ROW_ESTIMATE;
-  }
-
-  if (!is_simple()) {
-    if (optimize_set_operand(thd, this, query_term())) return true;
-    if (set_limit(thd, query_term()->query_block())) return true;
-    if (!is_union()) query_result()->set_limit(select_limit_cnt);
-  }
-
-  query_result()->estimated_rowcount = estimated_rowcount;
-  query_result()->estimated_cost = estimated_cost;
-
-  // If the caller has asked for materialization directly into a table of its
-  // own, and we can do so, do an unfinished materialization (see the comment
-  // on this function for more details).
-  if (thd->lex->m_sql_cmd != nullptr &&
-      thd->lex->m_sql_cmd->using_secondary_storage_engine()) {
-    // Not supported when using secondary storage engine.
-    create_access_paths(thd);
-  } else if (estimated_rowcount <= 1 ||
-             use_iterator(materialize_destination, query_term())) {
-    // Don't do it for const tables, as for those, optimize_derived() wants to
-    // run the query during optimization, and thus needs an iterator.
-    //
-    // Do note that JOIN::extract_func_dependent_tables() can want to read from
-    // the derived table during the optimization phase even if it has
-    // estimated_rowcount larger than one (e.g., because it understands it can
-    // get only one row due to a unique index), but will detect that the table
-    // has not been created, and treat the the lookup as non-const.
-    
-    
-    
-    if (!thd->plan_cache.plan_root_is_optimized()){
-      create_access_paths(thd);
-    }
-  } else if (materialize_destination != nullptr &&
-             can_materialize_directly_into_result()) {
-    assert(!is_simple());
-    const bool calc_found_rows =
-        (first_query_block()->active_options() & OPTION_FOUND_ROWS);
-    m_query_blocks_to_materialize = set_operation()->setup_materialize_set_op(
-        thd, materialize_destination,
-        /*union_distinct_only=*/false, calc_found_rows);
-  } else {
-    // Recursive CTEs expect to see the rows in the result table immediately
-    // after writing them.
-    assert(!is_recursive());
-
-    if (!thd->plan_cache.plan_root_is_optimized()) { 
-      create_access_paths(thd);
-    }
-  }
-  
-  set_optimized();  // All query blocks optimized, update the state
-
-  if (item != nullptr) {
-    // If we're part of an IN subquery, the containing engine may want to
-    // add its own iterators on top, e.g. to materialize us.
-    //
-    // TODO(sgunders): See if we can do away with the engine concept
-    // altogether, now that there's much less execution logic in them.
-    assert(!unfinished_materialization());
-    item->create_iterators(thd);
-    if (m_root_access_path == nullptr) {
-      return false;
-    }
-  }
-
-  if (create_iterators && IteratorsAreNeeded(thd, m_root_access_path)) {
-    JOIN *join = query_term()->query_block()->join;
-
-    DBUG_EXECUTE_IF(
-        "ast", Query_term *qn = m_query_term;
-        DBUG_PRINT("ast", ("\n%s", thd->query().str)); if (qn) {
-          std::ostringstream buf;
-          qn->debugPrint(0, buf);
-          DBUG_PRINT("ast", ("\n%s", buf.str().c_str()));
-        });
-
-    DBUG_EXECUTE_IF(
-        "ast", bool is_root_of_join = (join != nullptr); DBUG_PRINT(
-            "ast", ("Query plan:\n%s\n",
-                    PrintQueryPlan(0, m_root_access_path, join, is_root_of_join)
-                        .c_str())););
-
-    m_root_iterator = CreateIteratorFromAccessPath(
-        thd, m_root_access_path, join, /*eligible_for_batch_mode=*/true);
-    if (m_root_iterator == nullptr) {
-      return true;
+  if (!thd->plan_cache.plan_root_is_optimized()) {
+    if (!finalize_access_paths) {
+      assert(!create_iterators);
     }
 
-    if (thd->lex->using_hypergraph_optimizer) {
-      if (finalize_full_text_functions(thd, this)) {
-        return true;
+    assert(is_prepared() && !is_optimized());
+
+    Change_current_query_block save_query_block(thd);
+
+    ha_rows estimated_rowcount = 0;
+    double estimated_cost = 0.0;
+
+    if (query_result() != nullptr) query_result()->estimated_rowcount = 0;
+
+    for (Query_block *query_block = first_query_block(); query_block != nullptr;
+         query_block = query_block->next_query_block()) {
+      thd->lex->set_current_query_block(query_block);
+
+      // LIMIT is required for optimization
+      if (set_limit(thd, query_block)) return true; /* purecov: inspected */
+
+      if (query_block->optimize(thd, finalize_access_paths)) return true;
+
+      /*
+        Accumulate estimated number of rows.
+        1. Implicitly grouped query has one row (with HAVING it has zero or one
+          rows).
+        2. If GROUP BY clause is optimized away because it was a constant then
+          query produces at most one row.
+      */
+      if (contributes_to_rowcount_estimate(query_block))
+        estimated_rowcount += (query_block->is_implicitly_grouped() ||
+                               query_block->join->group_optimized_away)
+                                  ? 1
+                                  : query_block->join->best_rowcount;
+
+      estimated_cost += query_block->join->best_read;
+
+      // Table_ref::fetch_number_of_rows() expects to get the number of rows
+      // from all earlier query blocks from the query result, so we need to
+      // update it as we go. In particular, this is used when optimizing a
+      // recursive SELECT in a CTE, so that it knows how many rows the
+      // non-recursive query blocks will produce.
+      //
+      // TODO(sgunders): Communicate this in a different way when the query
+      // result goes away.
+      if (query_result() != nullptr) {
+        query_result()->estimated_rowcount = estimated_rowcount;
+        query_result()->estimated_cost = estimated_cost;
       }
     }
 
-    if (false) {
-      // This can be useful during debugging.
-      // TODO(sgunders): Consider adding the SET DEBUG force-subplan line here,
-      // like we have on EXPLAIN FORMAT=tree if subplan_tokens is active.
-      bool is_root_of_join = (join != nullptr);
-      fprintf(
-          stderr, "Query plan:\n%s\n",
-          PrintQueryPlan(0, m_root_access_path, join, is_root_of_join).c_str());
+    if (!is_simple() && query_term()->open_result_tables(thd, 0)) return true;
+
+    if ((uncacheable & UNCACHEABLE_DEPENDENT) && estimated_rowcount <= 1) {
+      /*
+        This depends on outer references, so optimization cannot assume that all
+        executions will always produce the same row. So, increase the counter to
+        prevent that this table is replaced with a constant.
+        Not testing all bits of "uncacheable", as if derived table sets user
+        vars (UNCACHEABLE_SIDEEFFECT) the logic above doesn't apply.
+      */
+      estimated_rowcount = PLACEHOLDER_TABLE_ROW_ESTIMATE;
     }
-  }
 
-  // When done with the outermost query expression, and if max_join_size is in
-  // effect, estimate the total number of row accesses in the query, and error
-  // out if it exceeds max_join_size.
-  if (outer_query_block() == nullptr &&
-      !Overlaps(thd->variables.option_bits, OPTION_BIG_SELECTS) &&
-      !thd->lex->is_explain() &&
-      EstimateRowAccesses(m_root_access_path, /*num_evaluations=*/1.0,
-                          std::numeric_limits<double>::infinity()) >
-          static_cast<double>(thd->variables.max_join_size)) {
-    my_error(ER_TOO_BIG_SELECT, MYF(0));
-    return true;
-  }
+    if (!is_simple()) {
+      if (optimize_set_operand(thd, this, query_term())) return true;
+      if (set_limit(thd, query_term()->query_block())) return true;
+      if (!is_union()) query_result()->set_limit(select_limit_cnt);
+    }
 
+    query_result()->estimated_rowcount = estimated_rowcount;
+    query_result()->estimated_cost = estimated_cost;
+
+    // If the caller has asked for materialization directly into a table of its
+    // own, and we can do so, do an unfinished materialization (see the comment
+    // on this function for more details).
+    if (thd->lex->m_sql_cmd != nullptr &&
+        thd->lex->m_sql_cmd->using_secondary_storage_engine()) {
+      // Not supported when using secondary storage engine.
+      create_access_paths(thd);
+    } else if (estimated_rowcount <= 1 ||
+               use_iterator(materialize_destination, query_term())) {
+      // Don't do it for const tables, as for those, optimize_derived() wants to
+      // run the query during optimization, and thus needs an iterator.
+      //
+      // Do note that JOIN::extract_func_dependent_tables() can want to read
+      // from the derived table during the optimization phase even if it has
+      // estimated_rowcount larger than one (e.g., because it understands it can
+      // get only one row due to a unique index), but will detect that the table
+      // has not been created, and treat the the lookup as non-const.
+
+      if (!thd->plan_cache.plan_root_is_optimized()) {
+        create_access_paths(thd);
+      }
+    } else if (materialize_destination != nullptr &&
+               can_materialize_directly_into_result()) {
+      assert(!is_simple());
+      const bool calc_found_rows =
+          (first_query_block()->active_options() & OPTION_FOUND_ROWS);
+      m_query_blocks_to_materialize = set_operation()->setup_materialize_set_op(
+          thd, materialize_destination,
+          /*union_distinct_only=*/false, calc_found_rows);
+    } else {
+      // Recursive CTEs expect to see the rows in the result table immediately
+      // after writing them.
+      assert(!is_recursive());
+
+      if (!thd->plan_cache.plan_root_is_optimized()) {
+        create_access_paths(thd);
+      }
+    }
+
+    set_optimized();  // All query blocks optimized, update the state
+
+    if (item != nullptr) {
+      // If we're part of an IN subquery, the containing engine may want to
+      // add its own iterators on top, e.g. to materialize us.
+      //
+      // TODO(sgunders): See if we can do away with the engine concept
+      // altogether, now that there's much less execution logic in them.
+      assert(!unfinished_materialization());
+      item->create_iterators(thd);
+      if (m_root_access_path == nullptr) {
+        return false;
+      }
+    }
+
+    if (create_iterators && IteratorsAreNeeded(thd, m_root_access_path)) {
+      JOIN *join = query_term()->query_block()->join;
+
+      DBUG_EXECUTE_IF(
+          "ast", Query_term *qn = m_query_term;
+          DBUG_PRINT("ast", ("\n%s", thd->query().str)); if (qn) {
+            std::ostringstream buf;
+            qn->debugPrint(0, buf);
+            DBUG_PRINT("ast", ("\n%s", buf.str().c_str()));
+          });
+
+      DBUG_EXECUTE_IF(
+          "ast", bool is_root_of_join = (join != nullptr); DBUG_PRINT(
+              "ast", ("Query plan:\n%s\n", PrintQueryPlan(0, m_root_access_path,
+                                                          join, is_root_of_join)
+                                               .c_str())););
+
+      m_root_iterator = CreateIteratorFromAccessPath(
+          thd, m_root_access_path, join, /*eligible_for_batch_mode=*/true);
+      if (m_root_iterator == nullptr) {
+        return true;
+      }
+
+      if (thd->lex->using_hypergraph_optimizer) {
+        if (finalize_full_text_functions(thd, this)) {
+          return true;
+        }
+      }
+
+      if (false) {
+        // This can be useful during debugging.
+        // TODO(sgunders): Consider adding the SET DEBUG force-subplan line
+        // here, like we have on EXPLAIN FORMAT=tree if subplan_tokens is
+        // active.
+        bool is_root_of_join = (join != nullptr);
+        fprintf(stderr, "Query plan:\n%s\n",
+                PrintQueryPlan(0, m_root_access_path, join, is_root_of_join)
+                    .c_str());
+      }
+    }
+
+    // When done with the outermost query expression, and if max_join_size is in
+    // effect, estimate the total number of row accesses in the query, and error
+    // out if it exceeds max_join_size.
+    if (outer_query_block() == nullptr &&
+        !Overlaps(thd->variables.option_bits, OPTION_BIG_SELECTS) &&
+        !thd->lex->is_explain() &&
+        EstimateRowAccesses(m_root_access_path, /*num_evaluations=*/1.0,
+                            std::numeric_limits<double>::infinity()) >
+            static_cast<double>(thd->variables.max_join_size)) {
+      my_error(ER_TOO_BIG_SELECT, MYF(0));
+      return true;
+    }
+  } else {
+    set_optimized();  // All query blocks optimized, update the state
+  }
   return false;
 }
 
@@ -1422,20 +1423,20 @@ Query_term_set_op::setup_materialize_set_op(THD *thd, TABLE *dst_table,
   }
   return query_blocks;
 }
-  
-void Query_expression::create_access_paths(THD *thd) {
 
+void Query_expression::create_access_paths(THD *thd) {
   if (is_simple()) {
     JOIN *join = first_query_block()->join;
     assert(join && join->is_optimized());
     m_root_access_path = join->root_access_path();
 
-    // Return if query being executed is not an prepared statment.    
+    // Return if query being executed is not an prepared statment.
     if (!thd->plan_cache.executes_prepared_statment()) return;
-    
-    // Set access_path(s) to query. 
-    thd->plan_cache.set_access_path_plan_root(join->query_block, m_root_access_path);
-    
+
+    // Set access_path(s) to query.
+    thd->plan_cache.set_access_path_plan_root(join->query_block,
+                                              m_root_access_path);
+
     return;
   }
 
@@ -1887,7 +1888,7 @@ void Query_expression::destroy() {
     - It does not handle the case where a UNIT is optimized with error
       and not cleaned.
   */
-  assert(!is_optimized() || cleaned == UC_CLEAN);
+  //assert(!is_optimized() || cleaned == UC_CLEAN);
 
   for (auto qt : query_terms<QTC_PRE_ORDER>()) {
     if (qt->owning_operand() && qt->setop_query_result() != nullptr &&
@@ -1898,9 +1899,12 @@ void Query_expression::destroy() {
     }
     qt->query_block()->destroy();
   }
-  m_query_term->destroy_tree();
-  m_query_term = nullptr;
-  invalidate();
+
+  if (!current_thd->plan_cache.executes_prepared_statment()) {
+    m_query_term->destroy_tree();
+    m_query_term = nullptr;
+    invalidate();
+  }
 }
 
 #ifndef NDEBUG

@@ -136,7 +136,7 @@ void PLAN_CACHE::version_replacement(
         add_plan_root(_parameters);
         break; 
       }
-      case LILO:{
+      case LIFO:{
         plan_root_key plan_root_key;
         unsigned int timestamp = 0;
 
@@ -246,7 +246,7 @@ void PLAN_CACHE::global_replacement(
       erase_plan_root(plan_root_key);          
       break;
     }
-    case LILO:{
+    case LIFO:{
       plan_root_key plan_root_key;
       unsigned int timestamp = 0;
       for (auto &plan_root: plan_roots){   
@@ -451,9 +451,11 @@ void PLAN_CACHE::log_time_consumption(
   std::ofstream logFile;
   logFile.open(path, std::ios_base::app);
 
-  double durations_exe_after_opt_ms = (_duration_exec - _duration_opt)/(CLOCKS_PER_SEC/1000);
-  double duration_opt_ms=(_duration_opt)/(CLOCKS_PER_SEC/1000);
-  logFile << duration_opt_ms << "," << durations_exe_after_opt_ms << "," << _prepared_statment << "," << _query_string << std::endl;
+  // Micro seconds (10^-6) SECONDS
+  //double durations_exe_after_opt_ms = (_duration_exec - _duration_opt)/(CLOCKS_PER_SEC/1000);
+  //double duration_opt_ms=(_duration_opt)/(CLOCKS_PER_SEC/1000);
+  //logFile << duration_opt_ms << "," << durations_exe_after_opt_ms << "," << _prepared_statment << "," << _query_string << std::endl;
+  logFile << _duration_opt << "," << _duration_exec << "," << _prepared_statment << "," << _query_string << std::endl;
 };
 
 bool PLAN_CACHE::add_plan_root(std::vector<prepared_statement_parameter> _parameters){
