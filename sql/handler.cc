@@ -7912,7 +7912,7 @@ int handler::ha_write_row(uchar *buf) {
 
   if (unlikely(error)) return error;
 
-  if (!current_thd->plan_cache.executes_prepared_statment()){
+  if (!current_thd->plan_cache.executes_prepared_statement()){
     if (unlikely((error = binlog_log_row(table, nullptr, buf, log_func))))
       return error; /* purecov: inspected */
   }

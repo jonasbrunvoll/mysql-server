@@ -409,7 +409,7 @@ void PLAN_CACHE::set_optimized_status_plan_root(bool _status){
   plan_root->second.set_optimized_status(_status);
 }
 
-bool PLAN_CACHE::executes_prepared_statment(){
+bool PLAN_CACHE::executes_prepared_statement(){
   if (active_plan_root_key.first == nullptr) return false;
   return true;
 };
@@ -447,15 +447,13 @@ void PLAN_CACHE::log_time_consumption(
   bool _prepared_statment, 
   std::string _query_string){
   
+  _query_string.erase(std::remove(_query_string.begin(), _query_string.end(), '\n'), _query_string.end());
   const char *path="/home/jonas/mysql/experiments/log.txt";
   std::ofstream logFile;
   logFile.open(path, std::ios_base::app);
 
   // Micro seconds (10^-6) SECONDS
-  //double durations_exe_after_opt_ms = (_duration_exec - _duration_opt)/(CLOCKS_PER_SEC/1000);
-  //double duration_opt_ms=(_duration_opt)/(CLOCKS_PER_SEC/1000);
-  //logFile << duration_opt_ms << "," << durations_exe_after_opt_ms << "," << _prepared_statment << "," << _query_string << std::endl;
-  logFile << _duration_opt << "," << _duration_exec << "," << _prepared_statment << "," << _query_string << std::endl;
+  logFile << _duration_opt << "," << (_duration_exec - _duration_opt) << "," << _prepared_statment << "," << _query_string << std::endl;
 };
 
 bool PLAN_CACHE::add_plan_root(std::vector<prepared_statement_parameter> _parameters){

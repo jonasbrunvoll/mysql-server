@@ -2440,7 +2440,7 @@ void close_tmp_table(TABLE *table) {
   filesort_free_buffers(table, true);
 
   if (table->is_created()) {
-    if (!current_thd->plan_cache.executes_prepared_statment()){
+    if (!current_thd->plan_cache.executes_prepared_statement()){
       if (--share->tmp_open_count > 0) {
         table->file->ha_close();
       } else {
@@ -2460,7 +2460,7 @@ void close_tmp_table(TABLE *table) {
     
   }
 
-  if (!current_thd->plan_cache.executes_prepared_statment()){
+  if (!current_thd->plan_cache.executes_prepared_statement()){
     destroy(table->file);
     table->file = nullptr;
   }
@@ -2490,10 +2490,11 @@ void free_tmp_table(TABLE *table) {
   DBUG_PRINT("enter", ("table: %s", table->alias));
 
   TABLE_SHARE *const share = table->s;
-
+  
   assert(!table->is_created() && !table->has_storage_handler() &&
          share->ref_count() > 0 && share->tmp_open_count == 0 &&
          share->tmp_handler_count < share->ref_count());
+  
 
   if (table->pos_in_table_list != nullptr &&
       table->pos_in_table_list->common_table_expr() != nullptr) {

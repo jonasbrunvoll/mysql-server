@@ -1730,7 +1730,7 @@ static void release_or_close_table(THD *thd, TABLE *table) {
 void close_thread_table(THD *thd, TABLE **table_ptr) {
   TABLE *table = *table_ptr;
   DBUG_TRACE;
-  if (thd->plan_cache.executes_prepared_statment()){
+  if (thd->plan_cache.executes_prepared_statement()){
     table->key_read = 0;
   }
   assert(table->key_read == 0);

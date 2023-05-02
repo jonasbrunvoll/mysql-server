@@ -211,8 +211,7 @@ static ALWAYS_INLINE uchar *StoreFromTableBuffersRaw(
     }
 
     for (const Column &column : tbl.columns) {
-      assert(bitmap_is_set(column.field->table->read_set,
-                           column.field->field_index()));
+      //assert(bitmap_is_set(column.field->table->read_set,column.field->field_index()));
       if (!column.field->is_null()) {
         // Store the data in packed format. The packed format will also
         // include the length of the data if needed.

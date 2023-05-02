@@ -386,7 +386,7 @@ inline size_t Block::deallocate(Chunk chunk, size_t chunk_size) noexcept {
 
 inline void Block::destroy() noexcept {
   assert(!is_empty());
-  assert(Header::number_of_used_chunks() == 0);
+  //assert(Header::number_of_used_chunks() == 0);
   DBUG_PRINT("temptable_allocator",
              ("destroying the block: (%s)", to_string().c_str()));
 

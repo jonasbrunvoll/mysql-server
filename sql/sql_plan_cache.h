@@ -90,7 +90,7 @@ class PLAN_CACHE {
         AccessPath* _access_path
     );
 
-    bool executes_prepared_statment();
+    bool executes_prepared_statement();
     bool plan_root_is_optimized();
     void clear_active_plan_root_key();
     PLAN_ROOT* get_active_plan_root();

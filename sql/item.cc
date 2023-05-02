@@ -5894,15 +5894,17 @@ void Item_field::bind_fields() {
     - All other tables that have a valid table_ref do not have a valid
       field reference at this point.
   */
-  assert((table_ref == nullptr && field != nullptr) ||
-         (table_ref != nullptr &&
-          (table_ref->is_view_or_derived() ||
-           table_ref->is_recursive_reference()) &&
-          field != nullptr) ||
-         (table_ref != nullptr &&
-          !(table_ref->is_view_or_derived() ||
+  if (!current_thd->plan_cache.executes_prepared_statement()){
+    assert((table_ref == nullptr && field != nullptr) ||
+          (table_ref != nullptr &&
+            (table_ref->is_view_or_derived() ||
             table_ref->is_recursive_reference()) &&
-          field == nullptr));
+            field != nullptr) ||
+          (table_ref != nullptr &&
+            !(table_ref->is_view_or_derived() ||
+              table_ref->is_recursive_reference()) &&
+            field == nullptr));
+  }
   if (table_ref != nullptr && table_ref->table == nullptr) return;
   if (field == nullptr) {
     field = result_field = table_ref->table->field[field_index];

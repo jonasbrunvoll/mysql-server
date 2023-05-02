@@ -1000,7 +1000,7 @@ bool Prepared_statement::insert_parameters_from_vars(THD *thd,
     param->sync_clones();
   }
   
-  thd->plan_cache.enter_plan_cache("UNDEFINED", "N_ENTRIES", "WORST_MATCH", stmt, parameters_prepared_statement);
+  thd->plan_cache.enter_plan_cache("INEXACT_MATCH", "ONE_ENTRY", "LRU", stmt, parameters_prepared_statement);
 
   // Copy part of query string after last parameter marker
   if (m_with_log && query->append(m_query_string.str + length,
@@ -2407,7 +2407,7 @@ void Prepared_statement::cleanup_stmt(THD *thd) {
   DBUG_TRACE;
   DBUG_PRINT("enter", ("stmt: %p", this));
 
-  if (!thd->plan_cache.executes_prepared_statment()){
+  if (!thd->plan_cache.executes_prepared_statement()){
     cleanup_items(m_arena.item_list());
   }
   thd->cleanup_after_query();

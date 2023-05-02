@@ -4913,7 +4913,7 @@ finish:
     }
   }
 
-  if (!thd->plan_cache.executes_prepared_statment()){
+  if (!thd->plan_cache.executes_prepared_statement()){
     lex->cleanup(true);
   }
 

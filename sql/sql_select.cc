@@ -767,7 +767,7 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
   std::clock_t start_exec = std::clock();
   std::clock_t start_opt = std::clock();
   // Chech is query is a prepard statment. 
-  if (thd->plan_cache.executes_prepared_statment()) {
+  if (thd->plan_cache.executes_prepared_statement()) {
 
     // For logging purposes,
     prepared_statment = true;
@@ -776,21 +776,22 @@ bool Sql_cmd_dml::execute_inner(THD *thd) {
     PLAN_ROOT* ptr_plan_root = thd->plan_cache.get_active_plan_root();
     Swap_mem_root_guard mem_root_guard{thd, &ptr_plan_root->mem_root};
 
-    //if (!thd->plan_cache.plan_root_is_optimized()) {
+    if (!thd->plan_cache.plan_root_is_optimized()) {
       if (unit->optimize(thd, /*materialize_destination=*/nullptr,
                       /*create_iterators=*/true, /*finalize_access_paths=*/true)){
         return true;
       }
       // Ensure that the plan_root is flaged as optimized. 
       thd->plan_cache.set_optimized_status_plan_root(true);
-    //}
+    }
+    // Ensure that the unit is flaged as optimized. Only necassary when plan root is cached. 
+    if (!unit->is_optimized()) unit->set_optimized();  
   } else {
     if (unit->optimize(thd, /*materialize_destination=*/nullptr,
                      /*create_iterators=*/true, /*finalize_access_paths=*/true)){
       return true;
     }
   }
-  
   // Calculate the current statement cost.
   accumulate_statement_cost(lex);
 
@@ -1588,7 +1589,7 @@ static void destroy_sj_tmp_tables(JOIN *join) {
       table->file->ha_index_or_rnd_end();
     }
     close_tmp_table(table);
-    if (!current_thd->plan_cache.executes_prepared_statment()){
+    if (!current_thd->plan_cache.executes_prepared_statement()){
       free_tmp_table(table);
     }
   }
@@ -1837,7 +1838,9 @@ void JOIN::cleanup_item_list(const mem_root_deque<Item *> &items) const {
 bool Query_block::optimize(THD *thd, bool finalize_access_paths) {
   DBUG_TRACE;
 
-  assert(join == nullptr);
+  if (!thd->plan_cache.executes_prepared_statement()){
+    assert(join == nullptr);
+  }
   JOIN *const join_local = new (thd->mem_root) JOIN(thd, this);
   if (!join_local) return true; /* purecov: inspected */
 
@@ -3371,11 +3374,11 @@ void QEP_TAB::cleanup() {
     if (t != nullptr)  // Check tmp table is not yet freed.
     {
       close_tmp_table(t);
-      if (!current_thd->plan_cache.executes_prepared_statment()){
+      if (!current_thd->plan_cache.executes_prepared_statement()){
         free_tmp_table(t);
       }
     }
-    if (!current_thd->plan_cache.executes_prepared_statment()){
+    if (!current_thd->plan_cache.executes_prepared_statement()){
       destroy(tmp_table_param);
       tmp_table_param = nullptr;
     }

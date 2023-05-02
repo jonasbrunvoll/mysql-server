@@ -984,7 +984,6 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
                                 bool finalize_access_paths) {
   DBUG_TRACE;
 
-  if (!thd->plan_cache.plan_root_is_optimized()) {
     if (!finalize_access_paths) {
       assert(!create_iterators);
     }
@@ -1076,9 +1075,7 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
       // get only one row due to a unique index), but will detect that the table
       // has not been created, and treat the the lookup as non-const.
 
-      if (!thd->plan_cache.plan_root_is_optimized()) {
-        create_access_paths(thd);
-      }
+      create_access_paths(thd);
     } else if (materialize_destination != nullptr &&
                can_materialize_directly_into_result()) {
       assert(!is_simple());
@@ -1092,9 +1089,7 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
       // after writing them.
       assert(!is_recursive());
 
-      if (!thd->plan_cache.plan_root_is_optimized()) {
-        create_access_paths(thd);
-      }
+      create_access_paths(thd);
     }
 
     set_optimized();  // All query blocks optimized, update the state
@@ -1165,9 +1160,6 @@ bool Query_expression::optimize(THD *thd, TABLE *materialize_destination,
       my_error(ER_TOO_BIG_SELECT, MYF(0));
       return true;
     }
-  } else {
-    set_optimized();  // All query blocks optimized, update the state
-  }
   return false;
 }
 
@@ -1431,12 +1423,11 @@ void Query_expression::create_access_paths(THD *thd) {
     m_root_access_path = join->root_access_path();
 
     // Return if query being executed is not an prepared statment.
-    if (!thd->plan_cache.executes_prepared_statment()) return;
+    if (!thd->plan_cache.executes_prepared_statement()) return;
 
     // Set access_path(s) to query.
     thd->plan_cache.set_access_path_plan_root(join->query_block,
                                               m_root_access_path);
-
     return;
   }
 
@@ -1900,7 +1891,7 @@ void Query_expression::destroy() {
     qt->query_block()->destroy();
   }
 
-  if (!current_thd->plan_cache.executes_prepared_statment()) {
+  if (!current_thd->plan_cache.executes_prepared_statement()) {
     m_query_term->destroy_tree();
     m_query_term = nullptr;
     invalidate();
