@@ -447,7 +447,18 @@ void PLAN_CACHE::log_time_consumption(
   bool _prepared_statment, 
   std::string _query_string){
   
+  // Remove newline from _query_string. 
   _query_string.erase(std::remove(_query_string.begin(), _query_string.end(), '\n'), _query_string.end());
+
+  // Remove whute spaces from query_string
+  _query_string.erase(std::remove(_query_string.begin(), _query_string.end(), ' '), _query_string.end());
+
+  // Remove whute spaces from query_string
+  _query_string.erase(std::remove(_query_string.begin(), _query_string.end(), '['), _query_string.end());
+
+   // Remove whute spaces from query_string
+  _query_string.erase(std::remove(_query_string.begin(), _query_string.end(), ']'), _query_string.end());
+
   const char *path="/home/jonas/mysql/experiments/log.txt";
   std::ofstream logFile;
   logFile.open(path, std::ios_base::app);
@@ -493,6 +504,8 @@ std::vector<plan_root_key> PLAN_CACHE::get_version_keys_prepared_statement(Prepa
 
 void PLAN_CACHE::erase_plan_root(plan_root_key _key_plan_root){
   get_plan_root(_key_plan_root)->free_temp_tables();
+  Swap_mem_root_guard mem_root_guard{current_thd, &get_plan_root(_key_plan_root)->mem_root};
+  current_thd->lex->cleanup(true);
   plan_roots.erase(_key_plan_root);
 };
 
